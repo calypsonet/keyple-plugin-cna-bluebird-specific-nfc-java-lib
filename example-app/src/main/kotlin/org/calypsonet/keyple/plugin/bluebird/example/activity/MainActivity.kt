@@ -131,11 +131,13 @@ class MainActivity : AbstractExampleActivity() {
 
       // Activate protocols for the card reader: B, B' and SKY ECP B
       cardReader.activateProtocol(
-          BluebirdSupportContactlessProtocols.ISO_14443_4_B.name, "ISO_14443_4_CARD")
+          BluebirdSupportContactlessProtocols.ISO_14443_4_A.name, "ISO_14443_4_A_CARD")
+      cardReader.activateProtocol(
+          BluebirdSupportContactlessProtocols.ISO_14443_4_B.name, "ISO_14443_4_B_CARD")
       cardReader.activateProtocol(
           BluebirdSupportContactlessProtocols.INNOVATRON_B_PRIME.name, "INNOVATRON_B_PRIME_CARD")
       cardReader.activateProtocol(
-          BluebirdSupportContactlessProtocols.ISO14443_4_SKY_ECP_B.name, "ISO_14443_4_CARD")
+          BluebirdSupportContactlessProtocols.ISO_14443_4_B_SKY_ECP.name, "ISO_14443_4_CARD")
 
       // Get and configure the SAM reader
       samReader = bluebirdPlugin.getReader(BluebirdContactReader.READER_NAME)
@@ -267,11 +269,13 @@ class MainActivity : AbstractExampleActivity() {
               CoroutineScope(Dispatchers.Main).launch {
                 when (event?.type) {
                   CardReaderEvent.Type.CARD_MATCHED -> {
+                    addResultEvent("Protocol: ${cardReader.currentProtocol}")
                     addResultEvent("Card detected with AID: ${CalypsoClassicInfo.AID}")
                     responseProcessor(event.scheduledCardSelectionsResponse)
                     (cardReader as ObservableCardReader).finalizeCardProcessing()
                   }
                   CardReaderEvent.Type.CARD_INSERTED -> {
+                    addResultEvent("Protocol: ${cardReader.currentProtocol}")
                     addResultEvent(
                         "Card detected but AID didn't match with ${CalypsoClassicInfo.AID}")
                     (cardReader as ObservableCardReader).finalizeCardProcessing()
@@ -534,6 +538,7 @@ class MainActivity : AbstractExampleActivity() {
       permissions: Array<out String>,
       grantResults: IntArray
   ) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     when (requestCode) {
       PermissionHelper.MY_PERMISSIONS_REQUEST_ALL -> {
         val storagePermissionGranted =

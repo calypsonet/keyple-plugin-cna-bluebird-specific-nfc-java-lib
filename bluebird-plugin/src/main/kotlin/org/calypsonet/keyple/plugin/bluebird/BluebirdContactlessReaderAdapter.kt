@@ -109,11 +109,11 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
     } catch (e: IllegalArgumentException) {
       return false
     }
-    if ((protocol.value and pollingProtocols) != 0 ||
-        (protocol == BluebirdSupportContactlessProtocols.ISO14443_4_SKY_ECP_A &&
-            (pollingProtocols and BluebirdSupportContactlessProtocols.ISO_14443_4_A.value) != 0) ||
-        (protocol == BluebirdSupportContactlessProtocols.ISO14443_4_SKY_ECP_B &&
-            (pollingProtocols and BluebirdSupportContactlessProtocols.ISO_14443_4_B.value) != 0)) {
+    if ((protocol == currentTag?.currentProtocol) ||
+        (protocol == BluebirdSupportContactlessProtocols.ISO_14443_4_A_SKY_ECP &&
+            currentTag?.currentProtocol == BluebirdSupportContactlessProtocols.ISO_14443_4_A) ||
+        (protocol == BluebirdSupportContactlessProtocols.ISO_14443_4_B_SKY_ECP &&
+            currentTag?.currentProtocol == BluebirdSupportContactlessProtocols.ISO_14443_4_B)) {
       return true
     }
     return false
@@ -147,8 +147,10 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
       BluebirdSupportContactlessProtocols.INNOVATRON_B_PRIME.name ->
           pollingProtocols =
               pollingProtocols or BluebirdSupportContactlessProtocols.INNOVATRON_B_PRIME.value
-      BluebirdSupportContactlessProtocols.ISO14443_4_SKY_ECP_A.name -> {
+      BluebirdSupportContactlessProtocols.ISO_14443_4_A_SKY_ECP.name -> {
         checkEcpAvailabilty()
+        pollingProtocols =
+            pollingProtocols or BluebirdSupportContactlessProtocols.ISO_14443_4_A.value
         if (vasupMode == ExtNfcReader.ECP.Mode.VASUP_B) {
           throw IllegalStateException("SKY ECP VASUP type B is set")
         }
@@ -158,8 +160,10 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
         }
             ?: throw IllegalStateException("SKY ECP VASUP payload was not set")
       }
-      BluebirdSupportContactlessProtocols.ISO14443_4_SKY_ECP_B.name -> {
+      BluebirdSupportContactlessProtocols.ISO_14443_4_B_SKY_ECP.name -> {
         checkEcpAvailabilty()
+        pollingProtocols =
+            pollingProtocols or BluebirdSupportContactlessProtocols.ISO_14443_4_B.value
         if (vasupMode == ExtNfcReader.ECP.Mode.VASUP_A) {
           throw IllegalStateException("SKY ECP VASUP type A is set")
         }
@@ -189,8 +193,8 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
       BluebirdSupportContactlessProtocols.INNOVATRON_B_PRIME.name ->
           pollingProtocols =
               pollingProtocols xor BluebirdSupportContactlessProtocols.INNOVATRON_B_PRIME.value
-      BluebirdSupportContactlessProtocols.ISO14443_4_SKY_ECP_A.name,
-      BluebirdSupportContactlessProtocols.ISO14443_4_SKY_ECP_B.name -> {
+      BluebirdSupportContactlessProtocols.ISO_14443_4_A_SKY_ECP.name,
+      BluebirdSupportContactlessProtocols.ISO_14443_4_B_SKY_ECP.name -> {
         checkEcpAvailabilty()
         nfcEcp!!.clearConfiguration()
         vasupMode = null

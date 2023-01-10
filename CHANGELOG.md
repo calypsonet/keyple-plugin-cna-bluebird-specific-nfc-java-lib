@@ -5,14 +5,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [2.1.1] - 2023-01-10
 ### Added
 - `bluebird-plugin-mock` module containing an empty mock of the plugin.
 ### Fixed
 - The identification of the protocol currently used to communicate with a card.
+### Removed
+- Definitions for unusable protocols (`MIFARE_CLASSIC`, `MIFARE_ULTRALIGHT`, `SRT512`).
 ### CI
 - Automation of the right to execute (x) shell scripts.
 ### Upgraded
-- "Keyple Util Library" to version `2.2.0` by removing the use of deprecated methods.
+- "Keyple Util Library" to version `2.3.0` by removing the use of deprecated methods.
 
 ## [2.1.0] - 2022-07-26
 ### Added
@@ -36,7 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2020-12-18
 This is the initial release.
 
-[unreleased]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.0...HEAD
+[unreleased]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.1...HEAD
+[2.1.1]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.0...2.1.1
 [2.1.0]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.0.0...2.1.0
 [2.0.0]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/1.0.0...2.0.0
 [1.0.0]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/releases/tag/1.0.0

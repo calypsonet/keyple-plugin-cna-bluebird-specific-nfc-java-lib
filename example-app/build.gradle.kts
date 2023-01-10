@@ -67,12 +67,12 @@ dependencies {
     //Keyple Common
     implementation(project(path = ":bluebird-plugin"))
 
-    implementation("org.calypsonet.terminal:calypsonet-terminal-reader-java-api:1.0.+") { isChanging = true }
+    implementation("org.calypsonet.terminal:calypsonet-terminal-reader-java-api:1.2.+") { isChanging = true }
     implementation("org.calypsonet.terminal:calypsonet-terminal-calypso-java-api:1.2.+") { isChanging = true }
     implementation("org.eclipse.keyple:keyple-common-java-api:2.0.+") { isChanging = true }
-    implementation("org.eclipse.keyple:keyple-service-java-lib:2.1.0")
+    implementation("org.eclipse.keyple:keyple-service-java-lib:2.1.2")
     implementation("org.eclipse.keyple:keyple-service-resource-java-lib:2.0.2")
-    implementation("org.eclipse.keyple:keyple-card-calypso-java-lib:2.2.1")
+    implementation("org.eclipse.keyple:keyple-card-calypso-java-lib:2.3.1")
     implementation("org.eclipse.keyple:keyple-util-java-lib:2.+") { isChanging = true }
 
     /*
