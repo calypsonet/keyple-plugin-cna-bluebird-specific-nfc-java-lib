@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Card scanning process. Now, the low-level card scanning is properly stopped and the RF field is 
+  deactivated when the card detection is stopped, resulting in improved battery life for the 
+  terminal. 
 
 ## [2.1.1] - 2023-01-10
 ### Added
