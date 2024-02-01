@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [2.1.2] - 2024-02-01
 ### Fixed
 - Card scanning process. Now, the low-level card scanning is properly stopped and the RF field is 
   deactivated when the card detection is stopped, resulting in improved battery life for the 
@@ -44,7 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2020-12-18
 This is the initial release.
 
-[unreleased]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.1...HEAD
+[unreleased]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.2...HEAD
+[2.1.2]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.1...2.1.2
 [2.1.1]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.0...2.1.1
 [2.1.0]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.0.0...2.1.0
 [2.0.0]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/1.0.0...2.0.0
