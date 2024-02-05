@@ -292,11 +292,12 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
   /** Start NFC reader and receiver scan */
   private fun startScan(pollingProtocols: Int, listener: (NfcResult) -> Unit) {
     try {
+      nfcReader.enable(true)
       nfcBroadcastReceiver.listener = listener
       nfcReader.cardTypeForScan = pollingProtocols
       var status = nfcReader.BBextNfcCarrierOn()
       if (status != ExtNfcReader.ResultCode.SUCCESS) {
-        Timber.e("Error while setting the RF field on")
+        Timber.d("Error while setting the RF field on")
       }
       status = nfcReader.startScan()
       // If the reader is already started -> stop it then re-start it
@@ -348,12 +349,14 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
     Timber.d("Stop card scan")
     var status = nfcReader.stopScan()
     if (status != ExtNfcReader.ResultCode.SUCCESS) {
-      Timber.e("Error while stopping the scan")
+      Timber.d("Error while stopping the scan")
     }
     status = nfcReader.BBextNfcCarrierOff()
     if (status != ExtNfcReader.ResultCode.SUCCESS) {
-      Timber.e("Error while setting the RF field off")
+      Timber.d("Error while setting the RF field off")
     }
+    nfcReader.disconnect()
+    nfcReader.enable(false)
     nfcBroadcastReceiver.unregister()
   }
 
