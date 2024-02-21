@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.4] - 2024-02-21
+### Fixed
+- Cards using unsupported contactless protocols are now ignored.
+
 ## [2.1.3] - 2024-02-06
 ### Fixed
 - Card scanning process. The RF module is now enabled/disabled in addition to the 
@@ -51,8 +55,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2020-12-18
 This is the initial release.
 
-[unreleased]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.3...HEAD
-[2.1.3]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.3...2.1.2
+[unreleased]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.4...HEAD
+[2.1.4]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.3...2.1.4
+[2.1.3]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.2...2.1.3
 [2.1.2]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.1...2.1.2
 [2.1.1]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.0...2.1.1
 [2.1.0]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.0.0...2.1.0

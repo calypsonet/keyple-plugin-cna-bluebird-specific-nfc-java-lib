@@ -382,11 +382,14 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
             if (ExtNfcReader.Broadcast.EXTNFC_DETECTED_ACTION == intent.action) {
               listener?.let {
                 val cardType = intent.getIntExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_TYPE_KEY, -1)
-                val tag =
-                    Tag(
-                        BluebirdSupportContactlessProtocols.fromValue(cardType),
-                        intent.getByteArrayExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_DATA_KEY))
-                it(NfcResultSuccess(tag))
+                val protocol = BluebirdSupportContactlessProtocols.fromValue(cardType)
+                protocol?.let {
+                  val tag =
+                      Tag(
+                          protocol,
+                          intent.getByteArrayExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_DATA_KEY))
+                  it(NfcResultSuccess(tag))
+                }
               }
             }
           }
