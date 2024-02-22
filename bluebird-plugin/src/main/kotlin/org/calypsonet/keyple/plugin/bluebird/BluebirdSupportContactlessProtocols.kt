@@ -26,13 +26,13 @@ enum class BluebirdSupportContactlessProtocols constructor(val value: Int) {
   INNOVATRON_B_PRIME(0x04);
 
   companion object {
-    fun fromValue(value: Int): BluebirdSupportContactlessProtocols {
+    fun fromValue(value: Int): BluebirdSupportContactlessProtocols? {
       for (protocol in values()) {
         if (protocol.value == value) {
           return protocol
         }
       }
-      throw IllegalArgumentException("BluebirdSupportContactlessProtocols '$value' is not defined")
+      return null
     }
   }
 }
