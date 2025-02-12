@@ -15,6 +15,7 @@ import org.eclipse.keyple.core.common.KeyplePluginExtension
 
 /**
  * Interface of the Bluebird plugin.
+ *
  * @since 2.0.0
  */
 interface BluebirdPlugin : KeyplePluginExtension {

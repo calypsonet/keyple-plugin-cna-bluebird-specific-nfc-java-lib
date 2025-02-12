@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2021 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -12,71 +12,87 @@
 package org.calypsonet.keyple.plugin.bluebird.example.adapter
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import android.widget.RadioButton
 import androidx.recyclerview.widget.RecyclerView
-import kotlinx.android.synthetic.main.card_action_event.view.cardActionTextView
-import kotlinx.android.synthetic.main.card_choice_event.view.choiceRadioGroup
 import org.calypsonet.keyple.plugin.bluebird.example.R
+import org.calypsonet.keyple.plugin.bluebird.example.databinding.CardActionEventBinding
+import org.calypsonet.keyple.plugin.bluebird.example.databinding.CardChoiceEventBinding
+import org.calypsonet.keyple.plugin.bluebird.example.databinding.CardHeaderEventBinding
+import org.calypsonet.keyple.plugin.bluebird.example.databinding.CardResultEventBinding
 import org.calypsonet.keyple.plugin.bluebird.example.model.ChoiceEventModel
 import org.calypsonet.keyple.plugin.bluebird.example.model.EventModel
 import org.calypsonet.keyple.plugin.bluebird.example.util.getColorResource
 
 class EventAdapter(private val events: ArrayList<EventModel>) :
-    RecyclerView.Adapter<EventAdapter.ViewHolder>() {
+    RecyclerView.Adapter<EventAdapter.BaseViewHolder>() {
 
-  override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+  override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BaseViewHolder {
+    val inflater = LayoutInflater.from(parent.context)
     return when (viewType) {
       EventModel.TYPE_ACTION ->
-          ViewHolder(
-              LayoutInflater.from(parent.context)
-                  .inflate(R.layout.card_action_event, parent, false))
+          ActionViewHolder(CardActionEventBinding.inflate(inflater, parent, false))
       EventModel.TYPE_RESULT ->
-          ViewHolder(
-              LayoutInflater.from(parent.context)
-                  .inflate(R.layout.card_result_event, parent, false))
+          ResultViewHolder(CardResultEventBinding.inflate(inflater, parent, false))
       EventModel.TYPE_MULTICHOICE ->
-          ChoiceViewHolder(
-              LayoutInflater.from(parent.context)
-                  .inflate(R.layout.card_choice_event, parent, false))
-      else ->
-          ViewHolder(
-              LayoutInflater.from(parent.context)
-                  .inflate(R.layout.card_header_event, parent, false))
+          ChoiceViewHolder(CardChoiceEventBinding.inflate(inflater, parent, false))
+      else -> HeaderViewHolder(CardHeaderEventBinding.inflate(inflater, parent, false))
     }
   }
 
-  override fun getItemCount(): Int {
-    return events.size
+  override fun getItemCount(): Int = events.size
+
+  override fun onBindViewHolder(holder: BaseViewHolder, position: Int) {
+    holder.bind(events[position])
   }
 
-  override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
-    viewHolder.bind(events[position])
+  override fun getItemViewType(position: Int): Int = events[position].type
+
+  abstract class BaseViewHolder(private val binding: Any) :
+      RecyclerView.ViewHolder(
+          when (binding) {
+            is CardActionEventBinding -> binding.root
+            is CardResultEventBinding -> binding.root
+            is CardHeaderEventBinding -> binding.root
+            is CardChoiceEventBinding -> binding.root
+            else -> throw IllegalArgumentException("Unknown binding type")
+          }) {
+    abstract fun bind(event: EventModel)
   }
 
-  override fun getItemViewType(position: Int): Int {
-    return events[position].type
-  }
-
-  open class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-    open fun bind(event: EventModel) {
-      with(itemView) { cardActionTextView.text = event.text }
-    }
-  }
-
-  class ChoiceViewHolder(itemView: View) : ViewHolder(itemView) {
+  class ActionViewHolder(private val binding: CardActionEventBinding) : BaseViewHolder(binding) {
     override fun bind(event: EventModel) {
-      super.bind(event)
-      with(itemView) {
-        choiceRadioGroup.removeAllViews()
-        (event as ChoiceEventModel).choices.forEachIndexed { index, choice ->
-          val button = RadioButton(this.context)
-          button.text = choice
-          button.id = index
-          button.setOnClickListener { event.callback(choice) }
-          button.setTextColor(context.getColorResource(R.color.textColorPrimary))
-          choiceRadioGroup.addView(button)
+      binding.cardActionTextView.text = event.text
+    }
+  }
+
+  class ResultViewHolder(private val binding: CardResultEventBinding) : BaseViewHolder(binding) {
+    override fun bind(event: EventModel) {
+      binding.cardActionTextView.text = event.text
+    }
+  }
+
+  class HeaderViewHolder(private val binding: CardHeaderEventBinding) : BaseViewHolder(binding) {
+    override fun bind(event: EventModel) {
+      binding.cardActionTextView.text = event.text
+    }
+  }
+
+  class ChoiceViewHolder(private val binding: CardChoiceEventBinding) : BaseViewHolder(binding) {
+    override fun bind(event: EventModel) {
+      binding.cardActionTextView.text = event.text
+      binding.choiceRadioGroup.removeAllViews()
+
+      if (event is ChoiceEventModel) {
+        event.choices.forEachIndexed { index, choice ->
+          val button =
+              RadioButton(itemView.context).apply {
+                text = choice
+                id = index
+                setOnClickListener { event.callback(choice) }
+                setTextColor(context.getColorResource(R.color.textColorPrimary))
+              }
+          binding.choiceRadioGroup.addView(button)
         }
       }
     }

@@ -19,6 +19,7 @@ import org.eclipse.keyple.core.plugin.spi.PluginSpi
 
 /**
  * Implementation of the Bluebird Plugin factory.
+ *
  * @since 2.0.0
  */
 internal class BluebirdPluginFactoryAdapter internal constructor(private val activity: Activity) :

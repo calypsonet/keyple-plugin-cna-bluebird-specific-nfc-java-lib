@@ -15,6 +15,7 @@ import org.eclipse.keyple.core.common.KeypleReaderExtension
 
 /**
  * Interface of the Bluebird contact reader.
+ *
  * @since 2.0.0
  */
 interface BluebirdContactReader : KeypleReaderExtension {

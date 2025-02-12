@@ -18,6 +18,7 @@ import org.eclipse.keyple.core.plugin.spi.reader.ReaderSpi
 
 /**
  * Implementation of the Bluebird Plugin to handle Bluebird contact and contactless readers.
+ *
  * @since 2.0.0
  */
 internal class BluebirdPluginAdapter(private val activity: Activity) : BluebirdPlugin, PluginSpi {

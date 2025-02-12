@@ -1,46 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-
-<androidx.cardview.widget.CardView
+<com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="2dp"
-    android:layout_marginTop="4dp"
-    android:layout_marginBottom="4dp"
     app:cardBackgroundColor="@color/colorSecondaryDark"
     app:cardCornerRadius="10dp"
     app:cardElevation="5dp"
-    app:cardUseCompatPadding="true"
-    app:contentPadding="8dp"
-    app:layout_constraintBottom_toBottomOf="parent"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent">
-
+    app:contentPadding="8dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <TextView
+        <com.google.android.material.textview.MaterialTextView
             android:id="@+id/cardActionTextView"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:textAlignment="center"
             android:textSize="18sp"
             android:textColor="@color/textColorPrimary"
+            app:layout_constraintTop_toTopOf="parent"
             tools:text="Choice" />
 
         <RadioGroup
             android:id="@+id/choiceRadioGroup"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/cardActionTextView">
-        </RadioGroup>
+            app:layout_constraintTop_toBottomOf="@+id/cardActionTextView" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-</androidx.cardview.widget.CardView>
+</com.google.android.material.card.MaterialCardView>

@@ -15,6 +15,7 @@ import org.eclipse.keyple.core.common.KeypleReaderExtension
 
 /**
  * Interface of the Bluebird contactless reader.
+ *
  * @since 2.0.0
  */
 interface BluebirdContactlessReader : KeypleReaderExtension {
@@ -26,10 +27,11 @@ interface BluebirdContactlessReader : KeypleReaderExtension {
   /**
    * Sets the payload to be sent with the VASUP polling mode. The expected content of the VASUP
    * payload is the one defined by the SKY ECP specification.
+   *
    * @param vasupPayload A 5 to 20 bytes byte array.
    * @throws IllegalArgumentException If the parameter is null or out of range.
-   * @throws UnsupportedOperationException When invoked in a context with Android SDK API level <
-   * 28.
+   * @throws UnsupportedOperationException When invoked in a context with Android SDK API level
+   *   < 28.
    * @since 2.1.0
    */
   fun setSkyEcpVasupPayload(vasupPayload: ByteArray)

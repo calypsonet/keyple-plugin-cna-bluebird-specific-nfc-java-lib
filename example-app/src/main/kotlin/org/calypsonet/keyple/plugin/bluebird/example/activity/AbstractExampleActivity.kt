@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2021 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -20,25 +20,22 @@ import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.navigation.NavigationView
-import kotlinx.android.synthetic.main.activity_main.drawerLayout
-import kotlinx.android.synthetic.main.activity_main.eventRecyclerView
-import kotlinx.android.synthetic.main.activity_main.navigationView
-import kotlinx.android.synthetic.main.activity_main.toolbar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.calypsonet.keyple.plugin.bluebird.example.R
 import org.calypsonet.keyple.plugin.bluebird.example.adapter.EventAdapter
+import org.calypsonet.keyple.plugin.bluebird.example.databinding.ActivityMainBinding
 import org.calypsonet.keyple.plugin.bluebird.example.model.EventModel
 import org.calypsonet.keyple.plugin.bluebird.example.util.CalypsoClassicInfo.SAM_PROFILE_NAME
-import org.calypsonet.terminal.calypso.WriteAccessLevel
-import org.calypsonet.terminal.calypso.sam.CalypsoSam
-import org.calypsonet.terminal.calypso.transaction.CardSecuritySetting
-import org.calypsonet.terminal.reader.CardReader
-import org.calypsonet.terminal.reader.CardReaderEvent
-import org.calypsonet.terminal.reader.ConfigurableCardReader
-import org.calypsonet.terminal.reader.spi.CardReaderObservationExceptionHandlerSpi
-import org.calypsonet.terminal.reader.spi.CardReaderObserverSpi
+import org.eclipse.keypop.calypso.card.WriteAccessLevel
+import org.eclipse.keypop.calypso.crypto.legacysam.sam.CalypsoSam
+import org.eclipse.keypop.calypso.card.transaction.CardSecuritySetting
+import org.eclipse.keypop.reader.CardReader
+import org.eclipse.keypop.reader.CardReaderEvent
+import org.eclipse.keypop.reader.ConfigurableCardReader
+import org.eclipse.keypop.reader.spi.CardReaderObservationExceptionHandlerSpi
+import org.eclipse.keypop.reader.spi.CardReaderObserverSpi
 import org.eclipse.keyple.card.calypso.CalypsoExtensionService
 import org.eclipse.keyple.core.service.Plugin
 import org.eclipse.keyple.core.service.resource.CardResourceProfileConfigurator
@@ -56,6 +53,7 @@ abstract class AbstractExampleActivity :
 
   protected lateinit var cardReader: ConfigurableCardReader
   protected lateinit var samReader: CardReader
+  protected lateinit var binding: ActivityMainBinding
 
   /** Use to modify event update behaviour regarding current use case execution */
   interface UseCase {
@@ -73,24 +71,26 @@ abstract class AbstractExampleActivity :
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    binding = ActivityMainBinding.inflate(layoutInflater)
+    setContentView(binding.root)
     initContentView()
 
     /** Init recycler view */
     adapter = EventAdapter(events)
     layoutManager = LinearLayoutManager(this)
-    eventRecyclerView.layoutManager = layoutManager
-    eventRecyclerView.adapter = adapter
+    binding.eventRecyclerView.layoutManager = layoutManager
+    binding.eventRecyclerView.adapter = adapter
 
     /** Init menu */
-    navigationView.setNavigationItemSelectedListener(this)
+    binding.navigationView.setNavigationItemSelectedListener(this)
     val toggle =
         ActionBarDrawerToggle(
             this,
-            drawerLayout,
-            toolbar,
+            binding.drawerLayout,
+            binding.toolbar,
             R.string.open_navigation_drawer,
             R.string.close_navigation_drawer)
-    drawerLayout.addDrawerListener(toggle)
+    binding.drawerLayout.addDrawerListener(toggle)
     toggle.syncState()
 
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -142,22 +142,21 @@ abstract class AbstractExampleActivity :
     CoroutineScope(Dispatchers.Main).launch {
       adapter.notifyDataSetChanged()
       adapter.notifyItemInserted(events.lastIndex)
-      eventRecyclerView.smoothScrollToPosition(events.size - 1)
+      binding.eventRecyclerView.smoothScrollToPosition(events.size - 1)
     }
   }
 
   abstract fun initContentView()
+
   abstract fun initReaders()
 
   protected fun getSecuritySettings(): CardSecuritySetting? {
-
     // The default KIF values for personalization, loading and debiting
     val DEFAULT_KIF_PERSO = 0x21.toByte()
     val DEFAULT_KIF_LOAD = 0x27.toByte()
     val DEFAULT_KIF_DEBIT = 0x30.toByte()
 
     val samCardResourceExtension = CalypsoExtensionService.getInstance()
-
     samCardResourceExtension.createCardSecuritySetting()
 
     // Create security settings that reference the same SAM profile requested from the card resource
@@ -168,19 +167,12 @@ abstract class AbstractExampleActivity :
         .createCardSecuritySetting()
         .setControlSamResource(samResource.reader, samResource.smartCard as CalypsoSam)
         .assignDefaultKif(WriteAccessLevel.PERSONALIZATION, DEFAULT_KIF_PERSO)
-        .assignDefaultKif(WriteAccessLevel.LOAD, DEFAULT_KIF_LOAD) //
-        .assignDefaultKif(WriteAccessLevel.DEBIT, DEFAULT_KIF_DEBIT) //
+        .assignDefaultKif(WriteAccessLevel.LOAD, DEFAULT_KIF_LOAD)
+        .assignDefaultKif(WriteAccessLevel.DEBIT, DEFAULT_KIF_DEBIT)
         .enableMultipleSession()
   }
 
-  /**
-   * Setup the [CardResourceService] to provide a Calypso SAM C1 resource when requested.
-   *
-   * @param plugin The plugin to which the SAM reader belongs.
-   * @param readerNameRegex A regular expression matching the expected SAM reader name.
-   * @param samProfileName A string defining the SAM profile.
-   * @throws IllegalStateException If the expected card resource is not found.
-   */
+  /** Setup the [CardResourceService] to provide a Calypso SAM C1 resource when requested. */
   open fun setupCardResourceService(
       plugin: Plugin,
       readerNameRegex: String?,
@@ -224,14 +216,8 @@ abstract class AbstractExampleActivity :
     cardResourceService.releaseCardResource(cardResource)
   }
 
-  /**
-   * Reader configurator used by the card resource service to setup the SAM reader with the required
-   * settings.
-   */
   internal class ReaderConfigurator : ReaderConfiguratorSpi {
-    /** {@inheritDoc} */
     override fun setupReader(reader: CardReader) {
-      // Nothing to configure for contact operations.
       Timber.d("Nothing to configure for reader '%s'", reader.name)
     }
   }

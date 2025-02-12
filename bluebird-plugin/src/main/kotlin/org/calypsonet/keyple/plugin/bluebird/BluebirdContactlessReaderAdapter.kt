@@ -21,19 +21,19 @@ import android.os.Build
 import com.bluebird.extnfc.ExtNfcReader
 import java.util.concurrent.atomic.AtomicBoolean
 import org.eclipse.keyple.core.plugin.CardIOException
-import org.eclipse.keyple.core.plugin.WaitForCardInsertionAutonomousReaderApi
+import org.eclipse.keyple.core.plugin.CardInsertionWaiterAsynchronousApi
 import org.eclipse.keyple.core.plugin.spi.reader.ConfigurableReaderSpi
 import org.eclipse.keyple.core.plugin.spi.reader.ReaderSpi
 import org.eclipse.keyple.core.plugin.spi.reader.observable.ObservableReaderSpi
-import org.eclipse.keyple.core.plugin.spi.reader.observable.state.insertion.WaitForCardInsertionAutonomousSpi
-import org.eclipse.keyple.core.plugin.spi.reader.observable.state.processing.DontWaitForCardRemovalDuringProcessingSpi
-import org.eclipse.keyple.core.plugin.spi.reader.observable.state.removal.WaitForCardRemovalNonBlockingSpi
+import org.eclipse.keyple.core.plugin.spi.reader.observable.state.insertion.CardInsertionWaiterAsynchronousSpi
+import org.eclipse.keyple.core.plugin.spi.reader.observable.state.removal.CardRemovalWaiterNonBlockingSpi
 import org.eclipse.keyple.core.util.Assert
 import org.eclipse.keyple.core.util.HexUtil
 import timber.log.Timber
 
 /**
  * Implementation of the Bluebird Contactless Reader
+ *
  * @since 2.0.0
  */
 @SuppressLint("WrongConstant")
@@ -41,9 +41,8 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
     BluebirdContactlessReader,
     ObservableReaderSpi,
     ConfigurableReaderSpi,
-    WaitForCardInsertionAutonomousSpi,
-    DontWaitForCardRemovalDuringProcessingSpi,
-    WaitForCardRemovalNonBlockingSpi {
+    CardInsertionWaiterAsynchronousSpi,
+    CardRemovalWaiterNonBlockingSpi {
 
   private companion object {
     const val MIN_SDK_API_LEVEL_ECP = 28
@@ -53,7 +52,7 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
   private val nfcBroadcastReceiver: NfcBroadcastReceiver
   private val nfcEcp: ExtNfcReader.ECP?
 
-  private lateinit var waitForCardInsertionAutonomousApi: WaitForCardInsertionAutonomousReaderApi
+  private lateinit var waitForCardInsertionAutonomousApi: CardInsertionWaiterAsynchronousApi
 
   private val isCardDiscovered = AtomicBoolean(false)
 
@@ -157,8 +156,7 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
         vasupPayload?.let {
           nfcEcp!!.setConfiguration(ExtNfcReader.ECP.Mode.VASUP_A, it)
           vasupMode = ExtNfcReader.ECP.Mode.VASUP_A
-        }
-            ?: throw IllegalStateException("SKY ECP VASUP payload was not set")
+        } ?: throw IllegalStateException("SKY ECP VASUP payload was not set")
       }
       BluebirdSupportContactlessProtocols.ISO_14443_4_B_SKY_ECP.name -> {
         checkEcpAvailabilty()
@@ -170,8 +168,7 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
         vasupPayload?.let {
           nfcEcp!!.setConfiguration(ExtNfcReader.ECP.Mode.VASUP_B, it)
           vasupMode = ExtNfcReader.ECP.Mode.VASUP_B
-        }
-            ?: throw java.lang.IllegalStateException("SKY ECP VASUP payload was not set")
+        } ?: throw java.lang.IllegalStateException("SKY ECP VASUP payload was not set")
       }
       else ->
           throw IllegalArgumentException("Activate protocol error: '$readerProtocol' not allowed")
@@ -360,18 +357,17 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
     nfcBroadcastReceiver.unregister()
   }
 
-  /**
-   * @see WaitForCardInsertionAutonomousSpi.connect
-   * @since 2.0.0
-   */
-  override fun connect(
-      waitForCardInsertionAutonomousReaderApi: WaitForCardInsertionAutonomousReaderApi
-  ) {
-    waitForCardInsertionAutonomousApi = waitForCardInsertionAutonomousReaderApi
+  override fun setCallback(callback: CardInsertionWaiterAsynchronousApi) {
+    waitForCardInsertionAutonomousApi = callback
+  }
+
+  override fun getCardRemovalMonitoringSleepDuration(): Int {
+    return 100
   }
 
   /**
    * NFC broadcast receiver.
+   *
    * @since 2.0.0
    */
   private class NfcBroadcastReceiver(private val context: Context?) {

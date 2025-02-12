@@ -15,6 +15,7 @@ import android.app.Activity
 
 /**
  * Provider of the Bluebird Plugin factory.
+ *
  * @since 2.0.0
  */
 object BluebirdPluginFactoryProvider {

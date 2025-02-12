@@ -28,6 +28,7 @@ import timber.log.Timber
 
 /**
  * Implementation of the Bluebird contact reader interface (usually dedicated to the SAM)
+ *
  * @since 2.0.0
  */
 @Suppress("INVISIBLE_ABSTRACT_MEMBER_FROM_SUPER_WARNING")
@@ -63,10 +64,9 @@ internal class BluebirdContactReaderAdapter(
     Assert.getInstance().notEmpty(apduIn, "APDU IN")
     samMessageHandler.channel = Channel(Channel.UNLIMITED)
     return suspendCoroutineWithTimeout(APDU_TIMEOUT) { continuation ->
-      val handler =
-          CoroutineExceptionHandler { _, exception ->
-            handleSamResponse(null, exception, continuation)
-          }
+      val handler = CoroutineExceptionHandler { _, exception ->
+        handleSamResponse(null, exception, continuation)
+      }
       GlobalScope.launch(handler) {
         withContext(dispatcher) {
           // Send command to SAM
@@ -147,10 +147,9 @@ internal class BluebirdContactReaderAdapter(
   private suspend fun openPhysicalChannelAsync(): ByteArray? {
     samMessageHandler.channel = Channel(Channel.UNLIMITED)
     return suspendCoroutineWithTimeout(ATR_TIMEOUT) { continuation ->
-      val handler =
-          CoroutineExceptionHandler { _, exception ->
-            handleSamResponse(null, exception, continuation)
-          }
+      val handler = CoroutineExceptionHandler { _, exception ->
+        handleSamResponse(null, exception, continuation)
+      }
       GlobalScope.launch(handler) {
         withContext(dispatcher) {
           val status = samInterface.device_Open()
@@ -212,6 +211,7 @@ internal class BluebirdContactReaderAdapter(
 
   /**
    * SAM message handler.
+   *
    * @since 2.0.0
    */
   private class SamMessageHandler : Handler(Looper.getMainLooper()) {
@@ -221,7 +221,7 @@ internal class BluebirdContactReaderAdapter(
     override fun handleMessage(msg: Message) {
       if (msg.what == SamInterface.SAM_DATA_RECEIVED_MSG_INT) {
         val samData = msg.data.getByteArray("receive")
-        channel?.offer(samData)
+        channel?.trySend(samData)
       }
     }
   }

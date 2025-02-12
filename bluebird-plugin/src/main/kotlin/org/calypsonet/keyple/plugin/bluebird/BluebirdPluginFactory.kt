@@ -15,6 +15,7 @@ import org.eclipse.keyple.core.common.KeyplePluginExtensionFactory
 
 /**
  * Interface of the Bluebird plugin factory.
+ *
  * @since 2.0.0
  */
 interface BluebirdPluginFactory : KeyplePluginExtensionFactory
