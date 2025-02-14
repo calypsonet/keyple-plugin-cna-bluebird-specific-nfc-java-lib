@@ -23,8 +23,9 @@ import org.eclipse.keyple.core.plugin.spi.reader.ReaderSpi
  */
 internal class BluebirdPluginAdapter(private val activity: Activity) : BluebirdPlugin, PluginSpi {
 
-  override fun searchAvailableReaders(): MutableSet<ReaderSpi> {
+  override fun getName(): String = BluebirdPlugin.PLUGIN_NAME
 
+  override fun searchAvailableReaders(): MutableSet<ReaderSpi> {
     val readers = ConcurrentHashMap<String, ReaderSpi>(2)
 
     val contactReader = BluebirdContactReaderAdapter()
@@ -36,9 +37,7 @@ internal class BluebirdPluginAdapter(private val activity: Activity) : BluebirdP
     return readers.map { it.value }.toMutableSet()
   }
 
-  override fun getName(): String = BluebirdPlugin.PLUGIN_NAME
-
   override fun onUnregister() {
-    // Do nothing -> all unregister operations are handled by readers
+    // Do nothing -> all unregisterBroadcastReceiver operations are handled by readers
   }
 }
