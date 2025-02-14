@@ -19,11 +19,11 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import com.bluebird.extnfc.ExtNfcReader
+import com.bluebird.extnfc.ExtNfcReader.ResultCode
 import java.util.concurrent.atomic.AtomicBoolean
 import org.eclipse.keyple.core.plugin.CardIOException
 import org.eclipse.keyple.core.plugin.CardInsertionWaiterAsynchronousApi
 import org.eclipse.keyple.core.plugin.spi.reader.ConfigurableReaderSpi
-import org.eclipse.keyple.core.plugin.spi.reader.ReaderSpi
 import org.eclipse.keyple.core.plugin.spi.reader.observable.ObservableReaderSpi
 import org.eclipse.keyple.core.plugin.spi.reader.observable.state.insertion.CardInsertionWaiterAsynchronousSpi
 import org.eclipse.keyple.core.plugin.spi.reader.observable.state.removal.CardRemovalWaiterNonBlockingSpi
@@ -31,33 +31,36 @@ import org.eclipse.keyple.core.util.Assert
 import org.eclipse.keyple.core.util.HexUtil
 import timber.log.Timber
 
-/**
- * Implementation of the Bluebird Contactless Reader
- *
- * @since 2.0.0
- */
-@SuppressLint("WrongConstant")
-internal class BluebirdContactlessReaderAdapter(activity: Activity) :
+internal class BluebirdContactlessReaderAdapter(
+  private val activity: Activity
+) :
     BluebirdContactlessReader,
     ObservableReaderSpi,
     ConfigurableReaderSpi,
     CardInsertionWaiterAsynchronousSpi,
-    CardRemovalWaiterNonBlockingSpi {
+    CardRemovalWaiterNonBlockingSpi,
+    BroadcastReceiver() {
 
   private companion object {
     const val MIN_SDK_API_LEVEL_ECP = 28
   }
 
-  private val nfcReader: ExtNfcReader
-  private val nfcBroadcastReceiver: NfcBroadcastReceiver
-  private val nfcEcp: ExtNfcReader.ECP?
+  @SuppressLint("WrongConstant")
+  private val nfcReader: ExtNfcReader =
+      activity.getSystemService(ExtNfcReader.READER_SERVICE_NAME) as ExtNfcReader
+  private val nfcEcp: ExtNfcReader.ECP? =
+      if (Build.VERSION.SDK_INT >= MIN_SDK_API_LEVEL_ECP) {
+        nfcReader.ecp
+      } else {
+        null
+      }
+  private val isCardDiscovered = AtomicBoolean(false)
+  private var isBroadcastReceiverRegistered: Boolean = false
+  private var isCardChannelOpen: Boolean = false
 
   private lateinit var waitForCardInsertionAutonomousApi: CardInsertionWaiterAsynchronousApi
 
-  private val isCardDiscovered = AtomicBoolean(false)
-
-  private var lastTagTime: Long = 0
-  private var lastTagData: String? = null
+  private var currentPowerOnData: String? = null
 
   private var currentTag: Tag? = null
   private var pollingProtocols: Int = 0
@@ -65,42 +68,113 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
   private var vasupPayload: ByteArray? = null
   private var vasupMode: Byte? = null
 
-  init {
-    nfcReader = activity.getSystemService(ExtNfcReader.READER_SERVICE_NAME) as ExtNfcReader
-    nfcReader.enable(true)
-    nfcBroadcastReceiver = NfcBroadcastReceiver(activity)
-    nfcEcp =
-        if (Build.VERSION.SDK_INT >= MIN_SDK_API_LEVEL_ECP) {
-          nfcReader.ecp
-        } else {
-          null
-        }
-  }
-
-  /**
-   * @see BluebirdContactlessReader.setSkyEcpVasupPayload
-   * @since 2.1.0
-   */
   override fun setSkyEcpVasupPayload(vasupPayload: ByteArray) {
-    checkEcpAvailabilty()
+    checkExpAvailability()
     Assert.getInstance()
         .notNull(vasupPayload, "vasupPayload")
         .isInRange(vasupPayload.size, 5, 20, "vasupPayload")
     this.vasupPayload = vasupPayload
   }
 
-  private fun checkEcpAvailabilty() {
-    if (Build.VERSION.SDK_INT < MIN_SDK_API_LEVEL_ECP) {
-      throw UnsupportedOperationException(
-          "The terminal Android SDK API level must be higher than $MIN_SDK_API_LEVEL_ECP when using the ECP mode. Current API level is " +
-              Build.VERSION.SDK_INT)
+  override fun onStartDetection() {
+    Timber.d("Start card scan using polling protocols $pollingProtocols configuration")
+    startScan()
+  }
+
+  private fun onTagDiscovered(nfcResult: NfcResult) {
+    isCardChannelOpen = false
+    if (nfcResult is NfcResultSuccess) {
+      Timber.d("Discovered tag: ${nfcResult.tag}")
+      currentTag = nfcResult.tag
+      currentPowerOnData = HexUtil.toHex(nfcResult.tag.data)
+      isCardDiscovered.set(true)
+      waitForCardInsertionAutonomousApi.onCardInserted()
+    } else if (nfcResult is NfcResultError) {
+      throw nfcResult.error
     }
   }
 
-  /**
-   * @see ConfigurableReaderSpi.isCurrentProtocol
-   * @since 2.0.0
-   */
+  override fun onStopDetection() {
+    Timber.d("Stop card scan")
+    var status = nfcReader.stopScan()
+    if (status != ResultCode.SUCCESS) {
+      Timber.d("Error while stopping the scan: {$status: ${getNfcErrorMessage(status)}}")
+    }
+    status = nfcReader.BBextNfcCarrierOff()
+    if (status != ResultCode.SUCCESS) {
+      Timber.d("Error while setting the RF field off: {$status: ${getNfcErrorMessage(status)}}")
+    }
+    nfcReader.disconnect()
+    nfcReader.enable(false)
+    unregisterBroadcastReceiver()
+  }
+
+  override fun getName(): String = BluebirdContactlessReader.READER_NAME
+
+  override fun openPhysicalChannel() {
+    val status = nfcReader.connect()
+    if (status < 0) {
+      throw CardIOException("Open physical channel error: {$status: ${getNfcErrorMessage(status)}}")
+    }
+    isCardChannelOpen = true
+  }
+
+  override fun closePhysicalChannel() {
+    nfcReader.disconnect()
+    isCardChannelOpen = false
+  }
+
+  override fun isPhysicalChannelOpen(): Boolean {
+    return isCardChannelOpen
+  }
+
+  override fun checkCardPresence(): Boolean {
+    throw UnsupportedOperationException("checkCardPresence() is not supported")
+  }
+
+  override fun getPowerOnData(): String = currentPowerOnData ?: ""
+
+  override fun transmitApdu(apduIn: ByteArray): ByteArray {
+    val transmitResult = nfcReader.transmit(apduIn)
+    if (transmitResult.mData != null && transmitResult.mData.size > 256) {
+      throw CardIOException(
+          "Transmit APDU error: unexpected response length: ${transmitResult.mData.size}")
+    }
+    return transmitResult.mData
+        ?: throw CardIOException("Transmit APDU error: ${transmitResult.mResult}")
+  }
+
+  override fun isContactless(): Boolean {
+    return true
+  }
+
+  override fun onUnregister() {
+    // Clear NFC reader
+    if (nfcReader.isEnabled) {
+      nfcReader.disconnect()
+      nfcReader.enable(false)
+    }
+    // Clear NFC broadcast receiver
+    unregisterBroadcastReceiver()
+  }
+
+  override fun isProtocolSupported(readerProtocol: String): Boolean {
+    return try {
+      BluebirdSupportContactlessProtocols.valueOf(readerProtocol)
+      true
+    } catch (e: IllegalArgumentException) {
+      false
+    }
+  }
+
+  override fun activateProtocol(readerProtocol: String) {
+    handleProtocol(readerProtocol, ProtocolOperation.Activate)
+  }
+
+  override fun deactivateProtocol(readerProtocol: String) {
+    handleProtocol(readerProtocol, ProtocolOperation.Deactivate)
+  }
+
   override fun isCurrentProtocol(readerProtocol: String): Boolean {
     val protocol: BluebirdSupportContactlessProtocols?
     try {
@@ -118,302 +192,183 @@ internal class BluebirdContactlessReaderAdapter(activity: Activity) :
     return false
   }
 
-  /**
-   * @see ConfigurableReaderSpi.isProtocolSupported
-   * @since 2.0.0
-   */
-  override fun isProtocolSupported(readerProtocol: String): Boolean {
-    return try {
-      BluebirdSupportContactlessProtocols.valueOf(readerProtocol)
-      true
-    } catch (e: IllegalArgumentException) {
-      false
-    }
-  }
-
-  /**
-   * @see ConfigurableReaderSpi.activateProtocol
-   * @since 2.0.0
-   */
-  override fun activateProtocol(readerProtocol: String) {
-    when (readerProtocol) {
-      BluebirdSupportContactlessProtocols.ISO_14443_4_A.name ->
-          pollingProtocols =
-              pollingProtocols or BluebirdSupportContactlessProtocols.ISO_14443_4_A.value
-      BluebirdSupportContactlessProtocols.ISO_14443_4_B.name ->
-          pollingProtocols =
-              pollingProtocols or BluebirdSupportContactlessProtocols.ISO_14443_4_B.value
-      BluebirdSupportContactlessProtocols.INNOVATRON_B_PRIME.name ->
-          pollingProtocols =
-              pollingProtocols or BluebirdSupportContactlessProtocols.INNOVATRON_B_PRIME.value
-      BluebirdSupportContactlessProtocols.ISO_14443_4_A_SKY_ECP.name -> {
-        checkEcpAvailabilty()
-        pollingProtocols =
-            pollingProtocols or BluebirdSupportContactlessProtocols.ISO_14443_4_A.value
-        if (vasupMode == ExtNfcReader.ECP.Mode.VASUP_B) {
-          throw IllegalStateException("SKY ECP VASUP type B is set")
-        }
-        vasupPayload?.let {
-          nfcEcp!!.setConfiguration(ExtNfcReader.ECP.Mode.VASUP_A, it)
-          vasupMode = ExtNfcReader.ECP.Mode.VASUP_A
-        } ?: throw IllegalStateException("SKY ECP VASUP payload was not set")
-      }
-      BluebirdSupportContactlessProtocols.ISO_14443_4_B_SKY_ECP.name -> {
-        checkEcpAvailabilty()
-        pollingProtocols =
-            pollingProtocols or BluebirdSupportContactlessProtocols.ISO_14443_4_B.value
-        if (vasupMode == ExtNfcReader.ECP.Mode.VASUP_A) {
-          throw IllegalStateException("SKY ECP VASUP type A is set")
-        }
-        vasupPayload?.let {
-          nfcEcp!!.setConfiguration(ExtNfcReader.ECP.Mode.VASUP_B, it)
-          vasupMode = ExtNfcReader.ECP.Mode.VASUP_B
-        } ?: throw java.lang.IllegalStateException("SKY ECP VASUP payload was not set")
-      }
-      else ->
-          throw IllegalArgumentException("Activate protocol error: '$readerProtocol' not allowed")
-    }
-  }
-
-  /**
-   * @see ConfigurableReaderSpi.deactivateProtocol
-   * @since 2.0.0
-   */
-  override fun deactivateProtocol(readerProtocol: String) {
-    when (readerProtocol) {
-      BluebirdSupportContactlessProtocols.ISO_14443_4_A.name ->
-          pollingProtocols =
-              pollingProtocols xor BluebirdSupportContactlessProtocols.ISO_14443_4_A.value
-      BluebirdSupportContactlessProtocols.ISO_14443_4_B.name ->
-          pollingProtocols =
-              pollingProtocols xor BluebirdSupportContactlessProtocols.ISO_14443_4_B.value
-      BluebirdSupportContactlessProtocols.INNOVATRON_B_PRIME.name ->
-          pollingProtocols =
-              pollingProtocols xor BluebirdSupportContactlessProtocols.INNOVATRON_B_PRIME.value
-      BluebirdSupportContactlessProtocols.ISO_14443_4_A_SKY_ECP.name,
-      BluebirdSupportContactlessProtocols.ISO_14443_4_B_SKY_ECP.name -> {
-        checkEcpAvailabilty()
-        nfcEcp!!.clearConfiguration()
-        vasupMode = null
-      }
-      else ->
-          throw IllegalArgumentException(
-              "De-activate protocol error: '$readerProtocol' not allowed")
-    }
-  }
-
-  /**
-   * @see ReaderSpi.checkCardPresence
-   * @since 2.0.0
-   */
-  override fun checkCardPresence(): Boolean {
-    return currentTag != null
-  }
-
-  /**
-   * @see ReaderSpi.getName
-   * @since 2.0.0
-   */
-  override fun getName(): String = BluebirdContactlessReader.READER_NAME
-
-  /**
-   * @see ReaderSpi.transmitApdu
-   * @since 2.0.0
-   */
-  override fun transmitApdu(apduIn: ByteArray): ByteArray {
-    val result = nfcReader.transmit(apduIn)
-    if (result.mData != null && result.mData.size > 256) {
-      throw CardIOException("Transmit APDU error: unexpected response length: ${result.mData.size}")
-    }
-    return result.mData ?: throw CardIOException("Transmit APDU error: ${result.mResult}")
-  }
-
-  /**
-   * @see ReaderSpi.isContactless
-   * @since 2.0.0
-   */
-  override fun isContactless(): Boolean {
-    return true
-  }
-
-  /**
-   * @see ReaderSpi.onUnregister
-   * @since 2.0.0
-   */
-  override fun onUnregister() {
-    // Clear NFC reader
-    if (nfcReader.isEnabled) {
-      nfcReader.disconnect()
-      nfcReader.enable(false)
-    }
-    // Clear NFC broadcast receiver
-    nfcBroadcastReceiver.unregister()
-  }
-
-  /**
-   * @see ReaderSpi.getPowerOnData
-   * @since 2.0.0
-   */
-  override fun getPowerOnData(): String = lastTagData ?: ""
-
-  /**
-   * @see ReaderSpi.openPhysicalChannel
-   * @since 2.0.0
-   */
-  override fun openPhysicalChannel() {
-    val status = nfcReader.connect()
-    if (status < 0) {
-      throw CardIOException("Open physical channel error: $status")
-    }
-  }
-
-  /**
-   * @see ReaderSpi.isPhysicalChannelOpen
-   * @since 2.0.0
-   */
-  override fun isPhysicalChannelOpen(): Boolean {
-    return nfcReader.isConnected
-  }
-
-  /**
-   * @see ReaderSpi.closePhysicalChannel
-   * @since 2.0.0
-   */
-  override fun closePhysicalChannel() {
-    val status = nfcReader.disconnect()
-    if (status < 0) {
-      Timber.v("Close physical channel error: $status")
-    }
-  }
-
-  /** Start NFC reader and receiver scan */
-  private fun startScan(pollingProtocols: Int, listener: (NfcResult) -> Unit) {
-    try {
-      nfcReader.enable(true)
-      nfcBroadcastReceiver.listener = listener
-      nfcReader.cardTypeForScan = pollingProtocols
-      var status = nfcReader.BBextNfcCarrierOn()
-      if (status != ExtNfcReader.ResultCode.SUCCESS) {
-        Timber.d("Error while setting the RF field on")
-      }
-      status = nfcReader.startScan()
-      // If the reader is already started -> stop it then re-start it
-      if (status == ExtNfcReader.ResultCode.ERROR_ALREADY_ON_SCANNING) {
-        status = nfcReader.stopScan()
-        if (status == ExtNfcReader.ResultCode.SUCCESS) {
-          status = nfcReader.startScan()
-        }
-      }
-      if (status == ExtNfcReader.ResultCode.SUCCESS) {
-        // NFC reader started successfully -> register NFC broadcast receiver for tag listening
-        if (!nfcBroadcastReceiver.isRegistered) {
-          nfcBroadcastReceiver.register()
-        }
-      } else {
-        // An error occurred during NFC reader start
-        listener(NfcResultError(CardIOException("Card scan error: $status")))
-      }
-    } catch (e: Exception) {
-      listener(NfcResultError(CardIOException("Card scan error: ${e.message}", e)))
-    }
-  }
-
-  /**
-   * @see ObservableReaderSpi.onStartDetection
-   * @since 2.0.0
-   */
-  override fun onStartDetection() {
-    Timber.d("Start card scan using polling protocols $pollingProtocols configuration")
-    startScan(pollingProtocols) { nfcResult ->
-      if (nfcResult is NfcResultSuccess) {
-        Timber.d("Discovered tag: ${nfcResult.tag}")
-        currentTag = nfcResult.tag
-        lastTagTime = System.currentTimeMillis()
-        lastTagData = HexUtil.toHex(nfcResult.tag.data)
-        isCardDiscovered.set(true)
-        waitForCardInsertionAutonomousApi.onCardInserted()
-      } else if (nfcResult is NfcResultError) {
-        throw nfcResult.error
-      }
-    }
-  }
-
-  /**
-   * @see ObservableReaderSpi.onStopDetection
-   * @since 2.0.0
-   */
-  override fun onStopDetection() {
-    Timber.d("Stop card scan")
-    var status = nfcReader.stopScan()
-    if (status != ExtNfcReader.ResultCode.SUCCESS) {
-      Timber.d("Error while stopping the scan")
-    }
-    status = nfcReader.BBextNfcCarrierOff()
-    if (status != ExtNfcReader.ResultCode.SUCCESS) {
-      Timber.d("Error while setting the RF field off")
-    }
-    nfcReader.disconnect()
-    nfcReader.enable(false)
-    nfcBroadcastReceiver.unregister()
-  }
-
   override fun setCallback(callback: CardInsertionWaiterAsynchronousApi) {
     waitForCardInsertionAutonomousApi = callback
   }
 
-  override fun getCardRemovalMonitoringSleepDuration(): Int {
-    return 100
+  override fun getCardRemovalMonitoringSleepDuration(): Int = 500
+
+  private fun checkExpAvailability() {
+    if (Build.VERSION.SDK_INT < MIN_SDK_API_LEVEL_ECP) {
+      throw UnsupportedOperationException(
+          "The terminal Android SDK API level must be higher than $MIN_SDK_API_LEVEL_ECP when using the ECP mode. Current API level is " +
+              Build.VERSION.SDK_INT)
+    }
   }
 
-  /**
-   * NFC broadcast receiver.
-   *
-   * @since 2.0.0
-   */
-  private class NfcBroadcastReceiver(private val context: Context?) {
+  private fun getNfcErrorMessage(status: Int): String {
+    return when (status) {
+      ResultCode.SUCCESS -> "SUCCESS"
+      ResultCode.ERROR_HAL_NORMALFAILURE -> "ERROR_HAL_NORMALFAILURE"
+      ResultCode.ERROR_HAL_OPEN_FAILED -> "ERROR_HAL_OPEN_FAILED"
+      ResultCode.ERROR_HAL_ALREADY_OPEN -> "ERROR_HAL_ALREADY_OPEN"
+      ResultCode.ERROR_HAL_NOT_OPEN -> "ERROR_HAL_NOT_OPEN"
+      ResultCode.ERROR_HAL_INVALID_PARAMETER -> "ERROR_HAL_INVALID_PARAMETER"
+      ResultCode.ERROR_HAL_TIMEOUT -> "ERROR_HAL_TIMEOUT"
+      ResultCode.ERROR_HAL_NOT_READY -> "ERROR_HAL_NOT_READY"
+      ResultCode.ERROR_HAL_NOT_SUPPORT_CARD -> "ERROR_HAL_NOT_SUPPORT_CARD"
+      ResultCode.ERROR_HAL_TRANSMISSION -> "ERROR_HAL_TRANSMISSION"
+      ResultCode.ERROR_HAL_PROTOCOL -> "ERROR_HAL_PROTOCOL"
+      ResultCode.ERROR_HAL_COLLISION -> "ERROR_HAL_COLLISION"
+      ResultCode.ERROR_HAL_NO_CARD -> "ERROR_HAL_NO_CARD"
+      ResultCode.ERROR_NFC_SERIVCE_EXCEPTION -> "ERROR_NFC_SERIVCE_EXCEPTION"
+      ResultCode.ERROR_ALREADY_ON -> "ERROR_ALREADY_ON"
+      ResultCode.ERROR_ALREADY_OFF -> "ERROR_ALREADY_OFF"
+      ResultCode.ERROR_NOT_ON_STATUS -> "ERROR_NOT_ON_STATUS"
+      ResultCode.ERROR_ALREADY_ON_SCANNING -> "ERROR_ALREADY_ON_SCANNING"
+      ResultCode.ERROR_NOT_SCANNING_STATUS -> "ERROR_NOT_SCANNING_STATUS"
+      ResultCode.ERROR_CARD_TYPE_FLAG_ERROR -> "ERROR_CARD_TYPE_FLAG_ERROR"
+      ResultCode.ERROR_TRANSMIT_DATA_ERROR -> "ERROR_TRANSMIT_DATA_ERROR"
+      ResultCode.ERROR_ALREADY_CONNECTED_ERROR -> "ERROR_ALREADY_CONNECTED_ERROR"
+      ResultCode.ERROR_ALREADY_DISCONNECTED_ERROR -> "ERROR_ALREADY_DISCONNECTED_ERROR"
+      ResultCode.ERROR_NOT_CONNECTED_ERROR -> "ERROR_NOT_CONNECTED_ERROR"
+      else -> "Unknown BB error code: $status"
+    }
+  }
 
-    private val broadcastReceiver =
-        object : BroadcastReceiver() {
-          override fun onReceive(context: Context, intent: Intent) {
-            if (ExtNfcReader.Broadcast.EXTNFC_DETECTED_ACTION == intent.action) {
-              listener?.let {
-                val cardType = intent.getIntExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_TYPE_KEY, -1)
-                val protocol = BluebirdSupportContactlessProtocols.fromValue(cardType)
-                protocol?.let {
-                  val tag =
-                      Tag(
-                          protocol,
-                          intent.getByteArrayExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_DATA_KEY))
-                  it(NfcResultSuccess(tag))
-                }
-              }
-            }
-          }
+  private fun registerBroadcastReceiverIfNeeded() {
+    Timber.d(
+        "Register BB NFC broadcast receiver (already registered? $isBroadcastReceiverRegistered)")
+    if (isBroadcastReceiverRegistered) {
+      return
+    }
+    val filter = IntentFilter()
+    filter.addAction(ExtNfcReader.Broadcast.EXTNFC_DETECTED_ACTION)
+    activity.registerReceiver(this, filter)
+    isBroadcastReceiverRegistered = true
+  }
+
+  private fun unregisterBroadcastReceiver() {
+    Timber.d(
+        "Unregister BB NFC broadcast receiver (already unregistered? ${!isBroadcastReceiverRegistered})")
+    if (!isBroadcastReceiverRegistered) {
+      return
+    }
+    activity.unregisterReceiver(this)
+    isBroadcastReceiverRegistered = false
+  }
+
+  private fun startScan() {
+    nfcReader.enable(true)
+    nfcReader.cardTypeForScan = pollingProtocols
+
+    var status = nfcReader.BBextNfcCarrierOn()
+    if (status != ResultCode.SUCCESS) {
+      Timber.e("Error while setting the RF field on: {$status: ${getNfcErrorMessage(status)}}")
+      return
+    }
+
+    status = nfcReader.startScan()
+    if (status == ResultCode.ERROR_ALREADY_ON_SCANNING) {
+      status = nfcReader.stopScan()
+      if (status == ResultCode.SUCCESS) {
+        status = nfcReader.startScan()
+      }
+    }
+    if (status != ResultCode.SUCCESS) {
+      Timber.e("Card scan error: {$status: ${getNfcErrorMessage(status)}}")
+      return
+    }
+
+    registerBroadcastReceiverIfNeeded()
+  }
+
+  sealed class ProtocolOperation {
+    abstract fun applyTo(currentValue: Int, protocolValue: Int): Int
+
+    object Activate : ProtocolOperation() {
+      override fun applyTo(currentValue: Int, protocolValue: Int) = currentValue or protocolValue
+    }
+
+    object Deactivate : ProtocolOperation() {
+      override fun applyTo(currentValue: Int, protocolValue: Int) = currentValue xor protocolValue
+    }
+  }
+
+  private fun handleProtocol(readerProtocol: String, operation: ProtocolOperation) {
+    val protocol = BluebirdSupportContactlessProtocols.valueOf(readerProtocol)
+
+    when (protocol) {
+      BluebirdSupportContactlessProtocols.ISO_14443_4_A,
+      BluebirdSupportContactlessProtocols.ISO_14443_4_B,
+      BluebirdSupportContactlessProtocols.INNOVATRON_B_PRIME -> {
+        pollingProtocols = operation.applyTo(pollingProtocols, protocol.value)
+      }
+      BluebirdSupportContactlessProtocols.ISO_14443_4_A_SKY_ECP,
+      BluebirdSupportContactlessProtocols.ISO_14443_4_B_SKY_ECP -> {
+        checkExpAvailability()
+        when (operation) {
+          is ProtocolOperation.Activate -> handleSkyEcpActivation(protocol)
+          is ProtocolOperation.Deactivate -> handleSkyEcpDeactivation()
+        }
+      }
+      else ->
+          throw IllegalArgumentException(
+              "${operation.javaClass.simpleName} protocol error: '$readerProtocol' not allowed")
+    }
+  }
+
+  private fun handleSkyEcpActivation(protocol: BluebirdSupportContactlessProtocols) {
+    val (baseProtocol, vasupMode, invalidVasupType, errorMessage) =
+        when (protocol) {
+          BluebirdSupportContactlessProtocols.ISO_14443_4_A_SKY_ECP ->
+              SkyEcpConfig(
+                  baseProtocol = BluebirdSupportContactlessProtocols.ISO_14443_4_A,
+                  vasupMode = ExtNfcReader.ECP.Mode.VASUP_A,
+                  invalidVasupType = ExtNfcReader.ECP.Mode.VASUP_B,
+                  errorMessage = "SKY ECP VASUP type B is set")
+          BluebirdSupportContactlessProtocols.ISO_14443_4_B_SKY_ECP ->
+              SkyEcpConfig(
+                  baseProtocol = BluebirdSupportContactlessProtocols.ISO_14443_4_B,
+                  vasupMode = ExtNfcReader.ECP.Mode.VASUP_B,
+                  invalidVasupType = ExtNfcReader.ECP.Mode.VASUP_A,
+                  errorMessage = "SKY ECP VASUP type A is set")
+          else -> throw IllegalArgumentException("Invalid SKY ECP protocol")
         }
 
-    var isRegistered: Boolean = false
-    var listener: ((NfcResult) -> Unit)? = null
+    pollingProtocols = pollingProtocols or baseProtocol.value
 
-    fun register() {
-      Timber.d("Register BB NFC broadcast receiver (already registered? $isRegistered)")
-      if (isRegistered) {
-        unregister()
-      }
-      if (context != null) {
-        val filter = IntentFilter()
-        filter.addAction(ExtNfcReader.Broadcast.EXTNFC_DETECTED_ACTION)
-        context.registerReceiver(broadcastReceiver, filter)
-        isRegistered = true
-      }
+    if (this.vasupMode == invalidVasupType) {
+      throw IllegalStateException(errorMessage)
     }
 
-    fun unregister() {
-      Timber.d("Unregister BB NFC broadcast receiver (already unregistered? ${!isRegistered})")
-      if (!isRegistered) {
-        return
+    vasupPayload?.let {
+      nfcEcp!!.setConfiguration(vasupMode, it)
+      this.vasupMode = vasupMode
+    } ?: throw IllegalStateException("SKY ECP VASUP payload was not set")
+  }
+
+  private fun handleSkyEcpDeactivation() {
+    nfcEcp!!.clearConfiguration()
+    vasupMode = null
+  }
+
+  override fun onReceive(context: Context, intent: Intent) {
+    if (ExtNfcReader.Broadcast.EXTNFC_DETECTED_ACTION == intent.action) {
+      val cardType = intent.getIntExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_TYPE_KEY, -1)
+      val protocol = BluebirdSupportContactlessProtocols.fromValue(cardType)
+      protocol?.let {
+        val tag =
+            Tag(protocol, intent.getByteArrayExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_DATA_KEY))
+        onTagDiscovered(NfcResultSuccess(tag))
       }
-      isRegistered = false
-      context?.unregisterReceiver(broadcastReceiver)
     }
   }
+
+  private data class SkyEcpConfig(
+      val baseProtocol: BluebirdSupportContactlessProtocols,
+      val vasupMode: Byte,
+      val invalidVasupType: Byte,
+      val errorMessage: String
+  )
 }

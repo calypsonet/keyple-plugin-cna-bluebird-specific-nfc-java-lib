@@ -9,28 +9,25 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  ************************************************************************************** */
+@file:Suppress("UNNECESSARY_SAFE_CALL")
+
 package org.calypsonet.keyple.plugin.bluebird.example.activity
 
 import android.Manifest
 import android.app.ProgressDialog
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.view.MenuItem
 import android.view.WindowManager
-import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
-import androidx.core.view.GravityCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.navigation.NavigationView
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.calypsonet.keyple.plugin.bluebird.*
 import org.calypsonet.keyple.plugin.bluebird.example.R
 import org.calypsonet.keyple.plugin.bluebird.example.adapter.EventAdapter
@@ -42,7 +39,6 @@ import org.calypsonet.keyple.plugin.bluebird.example.util.PermissionHelper
 import org.eclipse.keyple.card.calypso.CalypsoExtensionService
 import org.eclipse.keyple.card.calypso.crypto.legacysam.LegacySamExtensionService
 import org.eclipse.keyple.card.calypso.crypto.legacysam.LegacySamUtil
-import org.eclipse.keyple.core.common.KeyplePluginExtensionFactory
 import org.eclipse.keyple.core.service.*
 import org.eclipse.keyple.core.util.HexUtil
 import org.eclipse.keypop.calypso.card.WriteAccessLevel
@@ -61,16 +57,13 @@ import org.eclipse.keypop.reader.spi.CardReaderObserverSpi
 import timber.log.Timber
 
 class MainActivity :
-    AppCompatActivity(),
-    NavigationView.OnNavigationItemSelectedListener,
-    CardReaderObserverSpi,
-    CardReaderObservationExceptionHandlerSpi {
+    AppCompatActivity(), CardReaderObserverSpi, CardReaderObservationExceptionHandlerSpi {
 
   private lateinit var cardReader: ConfigurableCardReader
   private lateinit var samReader: CardReader
   private lateinit var legacySam: LegacySam
   private lateinit var binding: ActivityMainBinding
-  private var smartCardService: SmartCardService? = null
+  private var smartCardService: SmartCardService = SmartCardServiceProvider.getService()
   private lateinit var cardSelectionManager: CardSelectionManager
   private val areReadersInitialized = AtomicBoolean(false)
   private lateinit var progress: ProgressDialog
@@ -79,18 +72,6 @@ class MainActivity :
   private lateinit var adapter: RecyclerView.Adapter<*>
   private lateinit var layoutManager: RecyclerView.LayoutManager
   private val events = arrayListOf<EventModel>()
-
-  private var useCase: UseCase? = null
-
-  /** Use to modify event update behaviour regarding current use case execution */
-  interface UseCase {
-    fun onEventUpdate(event: CardReaderEvent?)
-  }
-
-  private enum class TransactionType {
-    DECREASE,
-    INCREASE
-  }
 
   private val readerApiFactory: ReaderApiFactory =
       SmartCardServiceProvider.getService().readerApiFactory
@@ -111,18 +92,6 @@ class MainActivity :
     layoutManager = LinearLayoutManager(this)
     binding.eventRecyclerView.layoutManager = layoutManager
     binding.eventRecyclerView.adapter = adapter
-
-    // Init menu
-    binding.navigationView.setNavigationItemSelectedListener(this)
-    val toggle =
-        ActionBarDrawerToggle(
-            this,
-            binding.drawerLayout,
-            binding.toolbar,
-            R.string.open_navigation_drawer,
-            R.string.close_navigation_drawer)
-    binding.drawerLayout.addDrawerListener(toggle)
-    toggle.syncState()
 
     progress = ProgressDialog(this)
     progress.setMessage(getString(R.string.please_wait))
@@ -147,77 +116,60 @@ class MainActivity :
 
     if (!areReadersInitialized.get()) {
       addActionEvent("Enabling NFC Reader mode")
-      addResultEvent("Please choose a use case")
-      progress.show()
-      initReaders()
-    } else {
+      addResultEvent("Initializing readers...")
+      try {
+        initReaders()
+        configureCalypsoTransaction()
+      } catch (e: Exception) {
+        showAlertDialog(e, finish = true, cancelable = false)
+      }
+    }
       addActionEvent("Start card Read Write Mode")
       (cardReader as ObservableCardReader).startCardDetection(REPEATING)
-    }
   }
 
-  fun initReaders() {
+  private fun initReaders() {
     Timber.d("initReaders")
-    GlobalScope.launch {
-      val pluginFactory: KeyplePluginExtensionFactory?
-      try {
-        pluginFactory =
-            withContext(Dispatchers.IO) {
-              BluebirdPluginFactoryProvider.getFactory(this@MainActivity)
-            }
-      } catch (e: Exception) {
-        withContext(Dispatchers.Main) { showAlertDialog(e, finish = true, cancelable = false) }
-        return@launch
-      }
 
-      smartCardService = SmartCardServiceProvider.getService()
-      val bluebirdPlugin = smartCardService!!.registerPlugin(pluginFactory)
-      cardReader =
-          bluebirdPlugin.getReader(BluebirdContactlessReader.READER_NAME) as ConfigurableCardReader
+    val pluginFactory = BluebirdPluginFactoryProvider.getFactory(this)
 
-      (cardReader as ObservableCardReader).setReaderObservationExceptionHandler {
-          pluginName,
-          readerName,
-          e ->
-        Timber.e("An unexpected reader error occurred: $pluginName:$readerName : $e")
-      }
+    smartCardService = SmartCardServiceProvider.getService()
+    val bluebirdPlugin = smartCardService!!.registerPlugin(pluginFactory)
+    cardReader =
+        bluebirdPlugin.getReader(BluebirdContactlessReader.READER_NAME) as ConfigurableCardReader
 
-      (cardReader as ObservableCardReader).addObserver(this@MainActivity)
+    (cardReader as ObservableCardReader).setReaderObservationExceptionHandler(this)
+    (cardReader as ObservableCardReader).addObserver(this)
 
-      bluebirdPlugin
-          .getReaderExtension(
-              BluebirdContactlessReader::class.java, BluebirdContactlessReader.READER_NAME)
-          .setSkyEcpVasupPayload(HexUtil.toByteArray(CalypsoClassicInfo.VASUP_PAYLOAD))
-      cardReader.activateProtocol(
-          BluebirdSupportContactlessProtocols.INNOVATRON_B_PRIME.name, "INNOVATRON_B_PRIME_CARD")
-      cardReader.activateProtocol(
-          BluebirdSupportContactlessProtocols.ISO_14443_4_B_SKY_ECP.name, "ISO_14443_4_CARD")
+    bluebirdPlugin
+        .getReaderExtension(
+            BluebirdContactlessReader::class.java, BluebirdContactlessReader.READER_NAME)
+        .setSkyEcpVasupPayload(HexUtil.toByteArray(CalypsoClassicInfo.VASUP_PAYLOAD))
 
-      samReader = bluebirdPlugin.getReader(BluebirdContactReader.READER_NAME)
+    cardReader.activateProtocol(
+        BluebirdSupportContactlessProtocols.INNOVATRON_B_PRIME.name, "INNOVATRON_B_PRIME_CARD")
+    cardReader.activateProtocol(
+        BluebirdSupportContactlessProtocols.ISO_14443_4_B_SKY_ECP.name, "ISO_14443_4_CARD")
 
-      PermissionHelper.checkPermission(
-          this@MainActivity,
-          arrayOf(
-              Manifest.permission.READ_EXTERNAL_STORAGE, BluebirdPlugin.BLUEBIRD_SAM_PERMISSION))
+    samReader = bluebirdPlugin.getReader(BluebirdContactReader.READER_NAME)
 
-      legacySam = getSam(samReader)!!
-      areReadersInitialized.set(true)
+    PermissionHelper.checkPermission(
+        this@MainActivity,
+        arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, BluebirdPlugin.BLUEBIRD_SAM_PERMISSION))
 
-      (cardReader as ObservableCardReader).startCardDetection(REPEATING)
-
-      withContext(Dispatchers.Main) { progress.dismiss() }
+    val tempSam = getSam(samReader)
+    if (tempSam == null) {
+      showAlertDialog(Exception("Failed to initialize SAM"), finish = true, cancelable = false)
+      return
     }
+    legacySam = tempSam
+    areReadersInitialized.set(true)
   }
 
   private fun getSam(samReader: CardReader): LegacySam? {
-    // Get the Keyple main service
-    val smartCardService = SmartCardServiceProvider.getService()
-
-    // Create a SAM selection manager.
     val samSelectionManager: CardSelectionManager =
         smartCardService.readerApiFactory.createCardSelectionManager()
 
-    // Create a SAM selection using the Calypso card extension.
     samSelectionManager.prepareSelection(
         readerApiFactory
             .createBasicCardSelector()
@@ -227,10 +179,7 @@ class MainActivity :
             .legacySamApiFactory
             .createLegacySamSelectionExtension())
     try {
-      // SAM communication: run the selection scenario.
       val samSelectionResult = samSelectionManager.processCardSelectionScenario(samReader)
-
-      // Get the Calypso SAM SmartCard resulting of the selection.
       return samSelectionResult.activeSmartCard!! as LegacySam
     } catch (e: Exception) {
       Timber.e(e)
@@ -253,14 +202,6 @@ class MainActivity :
     super.onDestroy()
   }
 
-  override fun onBackPressed() {
-    if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
-      binding.drawerLayout.closeDrawer(GravityCompat.START)
-    } else {
-      super.onBackPressed()
-    }
-  }
-
   // UI Event Management Methods
   protected fun showAlertDialog(t: Throwable, finish: Boolean = false, cancelable: Boolean = true) {
     val builder = AlertDialog.Builder(this@MainActivity)
@@ -272,11 +213,6 @@ class MainActivity :
     val dialog = builder.create()
     dialog.setCancelable(cancelable)
     dialog.show()
-  }
-
-  protected fun clearEvents() {
-    events.clear()
-    adapter.notifyDataSetChanged()
   }
 
   protected fun addHeaderEvent(message: String) {
@@ -305,39 +241,27 @@ class MainActivity :
     }
   }
 
-  // Navigation and Card Reader Events
-  override fun onNavigationItemSelected(item: MenuItem): Boolean {
-    if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
-      binding.drawerLayout.closeDrawer(GravityCompat.START)
-    }
-    when (item.itemId) {
-      R.id.usecase1 -> {
-        clearEvents()
-        addHeaderEvent("Running Calypso Read transaction (without SAM)")
-        configureCalypsoTransaction(::runCardReadTransactionWithoutSam)
-      }
-      R.id.usecase2 -> {
-        clearEvents()
-        addHeaderEvent("Running Calypso Read transaction (with SAM)")
-        configureCalypsoTransaction(::runCardReadTransactionWithSam)
-      }
-      R.id.usecase3 -> {
-        clearEvents()
-        addHeaderEvent("Running Calypso Read/Write transaction")
-        configureCalypsoTransaction(::runCardReadWriteIncreaseTransaction)
-      }
-      R.id.usecase4 -> {
-        clearEvents()
-        addHeaderEvent("Running Calypso Read/Write transaction")
-        configureCalypsoTransaction(::runCardReadWriteDecreaseTransaction)
-      }
-    }
-    return true
-  }
-
+  // Card Reader Events
   override fun onReaderEvent(readerEvent: CardReaderEvent?) {
     addResultEvent("New ReaderEvent received : ${readerEvent?.type?.name}")
-    useCase?.onEventUpdate(readerEvent)
+    when (readerEvent?.type) {
+      CardReaderEvent.Type.CARD_MATCHED -> {
+        addResultEvent("Protocol: ${cardReader.currentProtocol}")
+        addResultEvent("Card detected with AID: ${CalypsoClassicInfo.AID}")
+        runCardReadTransaction(readerEvent.scheduledCardSelectionsResponse)
+      }
+      CardReaderEvent.Type.CARD_INSERTED -> {
+        addResultEvent("Protocol: ${cardReader.currentProtocol}")
+        addResultEvent("Card detected but AID didn't match with ${CalypsoClassicInfo.AID}")
+        (cardReader as ObservableCardReader).finalizeCardProcessing()
+      }
+      CardReaderEvent.Type.CARD_REMOVED -> {
+        addResultEvent("Card removed")
+      }
+      else -> {
+        // Do nothing
+      }
+    }
   }
 
   override fun onReaderObservationError(pluginName: String?, readerName: String?, e: Throwable?) {
@@ -345,65 +269,28 @@ class MainActivity :
   }
 
   // Card Transaction Configuration and Processing
-  private fun configureCalypsoTransaction(
-      responseProcessor: (selectionsResponse: ScheduledCardSelectionsResponse) -> Unit
-  ) {
+  private fun configureCalypsoTransaction() {
     addActionEvent("Prepare Calypso Card Selection with AID: ${CalypsoClassicInfo.AID}")
     try {
-      /* Prepare a Calypso Card selection */
       cardSelectionManager = smartCardService?.readerApiFactory!!.createCardSelectionManager()!!
 
-      /* Create ISO card selector */
       val isoCardSelector =
           smartCardService
               ?.readerApiFactory
               ?.createIsoCardSelector()
               ?.filterByDfName(CalypsoClassicInfo.AID)
 
-      /* Calypso selection: configures a CardSelection with all the desired attributes */
       calypsoCardExtensionProvider = CalypsoExtensionService.getInstance()
       smartCardService?.checkCardExtension(calypsoCardExtensionProvider)
 
       val calypsoCardSelection =
           calypsoCardExtensionProvider.calypsoCardApiFactory.createCalypsoCardSelectionExtension()
 
-      /* Prepare the reading order */
       calypsoCardSelection.prepareReadRecord(
           CalypsoClassicInfo.SFI_EnvironmentAndHolder, CalypsoClassicInfo.RECORD_NUMBER_1)
 
-      /* Add the selection case to the current selection */
       cardSelectionManager.prepareSelection(isoCardSelector, calypsoCardSelection)
-
-      /* Schedule the selection scenario */
       cardSelectionManager.scheduleCardSelectionScenario(cardReader as ObservableCardReader, ALWAYS)
-
-      useCase =
-          object : UseCase {
-            override fun onEventUpdate(event: CardReaderEvent?) {
-              CoroutineScope(Dispatchers.Main).launch {
-                when (event?.type) {
-                  CardReaderEvent.Type.CARD_MATCHED -> {
-                    addResultEvent("Protocol: ${cardReader.currentProtocol}")
-                    addResultEvent("Card detected with AID: ${CalypsoClassicInfo.AID}")
-                    responseProcessor(event.scheduledCardSelectionsResponse)
-                    (cardReader as ObservableCardReader).finalizeCardProcessing()
-                  }
-                  CardReaderEvent.Type.CARD_INSERTED -> {
-                    addResultEvent("Protocol: ${cardReader.currentProtocol}")
-                    addResultEvent(
-                        "Card detected but AID didn't match with ${CalypsoClassicInfo.AID}")
-                    (cardReader as ObservableCardReader).finalizeCardProcessing()
-                  }
-                  CardReaderEvent.Type.CARD_REMOVED -> {
-                    addResultEvent("Card removed")
-                  }
-                  else -> {
-                    // Do nothing
-                  }
-                }
-              }
-            }
-          }
 
       addActionEvent("Waiting for card presentation")
     } catch (e: Exception) {
@@ -412,20 +299,7 @@ class MainActivity :
     }
   }
 
-  private fun runCardReadTransactionWithSam(selectionsResponse: ScheduledCardSelectionsResponse) {
-    runCardReadTransaction(selectionsResponse, true)
-  }
-
-  private fun runCardReadTransactionWithoutSam(
-      selectionsResponse: ScheduledCardSelectionsResponse
-  ) {
-    runCardReadTransaction(selectionsResponse, false)
-  }
-
-  private fun runCardReadTransaction(
-      selectionsResponse: ScheduledCardSelectionsResponse,
-      withSam: Boolean
-  ) {
+  private fun runCardReadTransaction(selectionsResponse: ScheduledCardSelectionsResponse) {
     GlobalScope.launch(Dispatchers.IO) {
       try {
         addActionEvent("Process selection")
@@ -441,32 +315,22 @@ class MainActivity :
         addActionEvent("Read environment and holder data")
 
         addResultEvent(
-            "Environment and Holder file: ${
-                        HexUtil.toHex(
-                            efEnvironmentHolder.data.content
-                        )
-                    }")
+            "Environment and Holder file: ${HexUtil.toHex(efEnvironmentHolder.data.content)}")
 
         addHeaderEvent("2nd card exchange: read the event log file")
 
-        val cardTransactionManager =
-            if (withSam) {
-              addActionEvent("Create card secured transaction with SAM")
-              val cryptoCardTransactionManagerFactory =
-                  LegacySamExtensionService.getInstance()
-                      .getLegacySamApiFactory()
-                      .createSymmetricCryptoCardTransactionManagerFactory(samReader, legacySam)
-              val securitySetting =
-                  calypsoCardExtensionProvider.calypsoCardApiFactory
-                      .createSymmetricCryptoSecuritySetting(cryptoCardTransactionManagerFactory)
+        addActionEvent("Create card secured transaction with SAM")
+        val cryptoCardTransactionManagerFactory =
+            LegacySamExtensionService.getInstance()
+                .getLegacySamApiFactory()
+                .createSymmetricCryptoCardTransactionManagerFactory(samReader, legacySam)
+        val securitySetting =
+            calypsoCardExtensionProvider.calypsoCardApiFactory.createSymmetricCryptoSecuritySetting(
+                cryptoCardTransactionManagerFactory)
 
-              calypsoCardExtensionProvider.calypsoCardApiFactory
-                  .createSecureRegularModeTransactionManager(
-                      cardReader, calypsoCard, securitySetting)
-            } else {
-              calypsoCardExtensionProvider.calypsoCardApiFactory.createFreeTransactionManager(
-                  cardReader, calypsoCard)
-            }
+        val cardTransactionManager =
+            calypsoCardExtensionProvider.calypsoCardApiFactory
+                .createSecureRegularModeTransactionManager(cardReader, calypsoCard, securitySetting)
 
         cardTransactionManager.prepareReadRecords(
             CalypsoClassicInfo.SFI_EventLog,
@@ -482,132 +346,35 @@ class MainActivity :
 
         addActionEvent("Process card Command for counter and event logs reading")
 
-        if (withSam) {
-          addActionEvent("Process card Opening session for transactions")
-          (cardTransactionManager as SecureRegularModeTransactionManager)
-              .prepareOpenSecureSession(WriteAccessLevel.LOAD)
-              .processCommands(KEEP_OPEN)
-          addResultEvent("Opening session: SUCCESS")
+        addActionEvent("Process card Opening session for transactions")
+        (cardTransactionManager as SecureRegularModeTransactionManager)
+            .prepareOpenSecureSession(WriteAccessLevel.LOAD)
+            .processCommands(KEEP_OPEN)
+        addResultEvent("Opening session: SUCCESS")
 
-          val counter =
-              calypsoCard
-                  .getFileBySfi(CalypsoClassicInfo.SFI_Counter1)
-                  .data
-                  .getContentAsCounterValue(CalypsoClassicInfo.RECORD_NUMBER_1)
-          val eventLog =
-              HexUtil.toHex(calypsoCard.getFileBySfi(CalypsoClassicInfo.SFI_EventLog).data.content)
+        val counter =
+            calypsoCard
+                .getFileBySfi(CalypsoClassicInfo.SFI_Counter1)
+                .data
+                .getContentAsCounterValue(CalypsoClassicInfo.RECORD_NUMBER_1)
+        val eventLog =
+            HexUtil.toHex(calypsoCard.getFileBySfi(CalypsoClassicInfo.SFI_EventLog).data.content)
 
-          addActionEvent("Process card Closing session")
-          cardTransactionManager.prepareCloseSecureSession().processCommands(CLOSE_AFTER)
-          addResultEvent("Closing session: SUCCESS")
+        addActionEvent("Process card Closing session")
+        cardTransactionManager.prepareCloseSecureSession().processCommands(CLOSE_AFTER)
+        addResultEvent("Closing session: SUCCESS")
 
-          addResultEvent("Counter value: $counter")
-          addResultEvent("EventLog file: $eventLog")
+        addResultEvent("Counter value: $counter")
+        addResultEvent("EventLog file: $eventLog")
 
-          addResultEvent("End of the Calypso card processing.")
-          addResultEvent("You can remove the card now")
-        }
+        addResultEvent("End of the Calypso card processing.")
+        addResultEvent("You can remove the card now")
       } catch (e: Exception) {
         Timber.e(e)
         addResultEvent("Exception: ${e.message}")
       }
-    }
-  }
-
-  private fun runCardReadWriteIncreaseTransaction(
-      selectionsResponse: ScheduledCardSelectionsResponse
-  ) {
-    runCardReadWriteTransaction(selectionsResponse, TransactionType.INCREASE)
-  }
-
-  private fun runCardReadWriteDecreaseTransaction(
-      selectionsResponse: ScheduledCardSelectionsResponse
-  ) {
-    runCardReadWriteTransaction(selectionsResponse, TransactionType.DECREASE)
-  }
-
-  private fun runCardReadWriteTransaction(
-      selectionsResponse: ScheduledCardSelectionsResponse,
-      transactionType: TransactionType
-  ) {
-    GlobalScope.launch(Dispatchers.IO) {
-      try {
-        addActionEvent("1st card exchange: aid selection")
-        val selectionsResult =
-            cardSelectionManager.parseScheduledCardSelectionsResponse(selectionsResponse)
-
-        if (selectionsResult.activeSelectionIndex != -1) {
-          addResultEvent("Calypso card selection: SUCCESS")
-          val calypsoCard = selectionsResult.activeSmartCard as CalypsoCard
-          addResultEvent("DFNAME: ${HexUtil.toHex(calypsoCard.dfName)}")
-
-          addActionEvent("Create card secured transaction with SAM")
-          val cryptoCardTransactionManagerFactory =
-              LegacySamExtensionService.getInstance()
-                  .legacySamApiFactory
-                  .createSymmetricCryptoCardTransactionManagerFactory(samReader, legacySam)
-
-          val securitySetting =
-              calypsoCardExtensionProvider.calypsoCardApiFactory
-                  .createSymmetricCryptoSecuritySetting(cryptoCardTransactionManagerFactory)
-
-          val cardTransactionManager =
-              calypsoCardExtensionProvider.calypsoCardApiFactory
-                  .createSecureRegularModeTransactionManager(
-                      cardReader, calypsoCard, securitySetting)
-
-          when (transactionType) {
-            TransactionType.INCREASE -> {
-              addActionEvent("Process card Opening session for transactions")
-              (cardTransactionManager as SecureRegularModeTransactionManager)
-                  .prepareOpenSecureSession(WriteAccessLevel.LOAD)
-                  .processCommands(KEEP_OPEN)
-              addResultEvent("Opening session: SUCCESS")
-
-              cardTransactionManager.prepareReadRecords(
-                  CalypsoClassicInfo.SFI_Counter1,
-                  CalypsoClassicInfo.RECORD_NUMBER_1,
-                  CalypsoClassicInfo.RECORD_NUMBER_1,
-                  CalypsoClassicInfo.RECORD_SIZE)
-              cardTransactionManager.processCommands(KEEP_OPEN)
-
-              cardTransactionManager.prepareIncreaseCounter(
-                  CalypsoClassicInfo.SFI_Counter1, CalypsoClassicInfo.RECORD_NUMBER_1, 10)
-              addActionEvent("Process card increase counter by 10")
-              cardTransactionManager.prepareCloseSecureSession().processCommands(CLOSE_AFTER)
-              addResultEvent("Increase by 10: SUCCESS")
-            }
-            TransactionType.DECREASE -> {
-              addActionEvent("Process card Opening session for transactions")
-              cardTransactionManager
-                  .prepareOpenSecureSession(WriteAccessLevel.DEBIT)
-                  .processCommands(KEEP_OPEN)
-              addResultEvent("Opening session: SUCCESS")
-
-              cardTransactionManager.prepareReadRecords(
-                  CalypsoClassicInfo.SFI_Counter1,
-                  CalypsoClassicInfo.RECORD_NUMBER_1,
-                  CalypsoClassicInfo.RECORD_NUMBER_1,
-                  CalypsoClassicInfo.RECORD_SIZE)
-              cardTransactionManager.processCommands(KEEP_OPEN)
-
-              cardTransactionManager.prepareDecreaseCounter(
-                  CalypsoClassicInfo.SFI_Counter1, CalypsoClassicInfo.RECORD_NUMBER_1, 1)
-              addActionEvent("Process card decreasing counter and close transaction")
-              cardTransactionManager.prepareCloseSecureSession().processCommands(CLOSE_AFTER)
-              addResultEvent("Decrease by 1: SUCCESS")
-            }
-          }
-
-          addResultEvent("End of the Calypso card processing.")
-          addResultEvent("You can remove the card now")
-        } else {
-          addResultEvent(
-              "The selection of the card has failed. Should not have occurred due to the MATCHED_ONLY selection mode.")
-        }
-      } catch (e: Exception) {
-        Timber.e(e)
-        addResultEvent("Exception: ${e.message}")
+      finally {
+        (cardReader as ObservableCardReader).finalizeCardProcessing()
       }
     }
   }

@@ -19,7 +19,6 @@ import kotlinx.coroutines.*
 import org.eclipse.keyple.core.plugin.CardIOException
 import org.eclipse.keyple.core.plugin.spi.reader.ReaderSpi
 import org.eclipse.keyple.core.util.HexUtil
-import timber.log.Timber
 
 /**
  * Adapter of [BluebirdContactReader]
@@ -68,7 +67,8 @@ internal class BluebirdContactReaderAdapter : BluebirdContactReader, ReaderSpi {
     samInterface.device_Close()
   }
 
-  private object SamMessageHandler : Handler(HandlerThread("SamMessageHandlerThread").apply { start() }.looper) {
+  private object SamMessageHandler :
+      Handler(HandlerThread("SamMessageHandlerThread").apply { start() }.looper) {
 
     private var deferredSamResponse = CompletableDeferred<ByteArray>()
 
