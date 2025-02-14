@@ -12,7 +12,7 @@
 package org.calypsonet.keyple.plugin.bluebird
 
 import android.os.Handler
-import android.os.Looper
+import android.os.HandlerThread
 import android.os.Message
 import com.bluebird.payment.sam.SamInterface
 import kotlinx.coroutines.*
@@ -45,10 +45,8 @@ internal class BluebirdContactReaderAdapter : BluebirdContactReader, ReaderSpi {
   }
 
   override fun openPhysicalChannel() {
-      checkStatus(samInterface.device_Open())
-    runBlocking {
-      atr = SamMessageHandler.getSamMessage()
-    }
+    checkStatus(samInterface.device_Open())
+    runBlocking { atr = SamMessageHandler.getSamMessage() }
   }
 
   override fun isPhysicalChannelOpen(): Boolean {
@@ -70,7 +68,7 @@ internal class BluebirdContactReaderAdapter : BluebirdContactReader, ReaderSpi {
     samInterface.device_Close()
   }
 
-  private object SamMessageHandler : Handler(Looper.getMainLooper()) {
+  private object SamMessageHandler : Handler(HandlerThread("SamMessageHandlerThread").apply { start() }.looper) {
 
     private var deferredSamResponse = CompletableDeferred<ByteArray>()
 
