@@ -21,6 +21,8 @@ import android.os.Build
 import com.bluebird.extnfc.ExtNfcReader
 import com.bluebird.extnfc.ExtNfcReader.ResultCode
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import org.eclipse.keyple.core.plugin.CardIOException
 import org.eclipse.keyple.core.plugin.CardInsertionWaiterAsynchronousApi
 import org.eclipse.keyple.core.plugin.spi.reader.ConfigurableReaderSpi
@@ -368,7 +370,7 @@ internal class BluebirdContactlessReaderAdapter(private val activity: Activity) 
       while (isWaitingForCardRemoval) {
         try {
           transmitApdu(HexUtil.toByteArray(PING_APDU))
-          Thread.sleep(100)
+          runBlocking { delay(100) }
         } catch (_: CardIOException) {
           nfcReader.disconnect()
           isWaitingForCardRemoval = false
