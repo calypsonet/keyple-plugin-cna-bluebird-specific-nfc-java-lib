@@ -124,8 +124,8 @@ class MainActivity :
         showAlertDialog(e, finish = true, cancelable = false)
       }
     }
-      addActionEvent("Start card Read Write Mode")
-      (cardReader as ObservableCardReader).startCardDetection(REPEATING)
+    addActionEvent("Start card Read Write Mode")
+    (cardReader as ObservableCardReader).startCardDetection(REPEATING)
   }
 
   private fun initReaders() {
@@ -372,8 +372,7 @@ class MainActivity :
       } catch (e: Exception) {
         Timber.e(e)
         addResultEvent("Exception: ${e.message}")
-      }
-      finally {
+      } finally {
         (cardReader as ObservableCardReader).finalizeCardProcessing()
       }
     }

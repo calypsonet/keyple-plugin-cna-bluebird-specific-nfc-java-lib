@@ -26,23 +26,22 @@ import org.eclipse.keyple.core.plugin.CardInsertionWaiterAsynchronousApi
 import org.eclipse.keyple.core.plugin.spi.reader.ConfigurableReaderSpi
 import org.eclipse.keyple.core.plugin.spi.reader.observable.ObservableReaderSpi
 import org.eclipse.keyple.core.plugin.spi.reader.observable.state.insertion.CardInsertionWaiterAsynchronousSpi
-import org.eclipse.keyple.core.plugin.spi.reader.observable.state.removal.CardRemovalWaiterNonBlockingSpi
+import org.eclipse.keyple.core.plugin.spi.reader.observable.state.removal.CardRemovalWaiterBlockingSpi
 import org.eclipse.keyple.core.util.Assert
 import org.eclipse.keyple.core.util.HexUtil
 import timber.log.Timber
 
-internal class BluebirdContactlessReaderAdapter(
-  private val activity: Activity
-) :
+internal class BluebirdContactlessReaderAdapter(private val activity: Activity) :
     BluebirdContactlessReader,
     ObservableReaderSpi,
     ConfigurableReaderSpi,
     CardInsertionWaiterAsynchronousSpi,
-    CardRemovalWaiterNonBlockingSpi,
+    CardRemovalWaiterBlockingSpi,
     BroadcastReceiver() {
 
   private companion object {
-    const val MIN_SDK_API_LEVEL_ECP = 28
+    private const val MIN_SDK_API_LEVEL_ECP = 28
+    private const val PING_APDU = "00C0000000"
   }
 
   @SuppressLint("WrongConstant")
@@ -57,6 +56,7 @@ internal class BluebirdContactlessReaderAdapter(
   private val isCardDiscovered = AtomicBoolean(false)
   private var isBroadcastReceiverRegistered: Boolean = false
   private var isCardChannelOpen: Boolean = false
+  private var isWaitingForCardRemoval = false
 
   private lateinit var waitForCardInsertionAutonomousApi: CardInsertionWaiterAsynchronousApi
 
@@ -120,7 +120,6 @@ internal class BluebirdContactlessReaderAdapter(
   }
 
   override fun closePhysicalChannel() {
-    nfcReader.disconnect()
     isCardChannelOpen = false
   }
 
@@ -195,8 +194,6 @@ internal class BluebirdContactlessReaderAdapter(
   override fun setCallback(callback: CardInsertionWaiterAsynchronousApi) {
     waitForCardInsertionAutonomousApi = callback
   }
-
-  override fun getCardRemovalMonitoringSleepDuration(): Int = 500
 
   private fun checkExpAvailability() {
     if (Build.VERSION.SDK_INT < MIN_SDK_API_LEVEL_ECP) {
@@ -363,6 +360,25 @@ internal class BluebirdContactlessReaderAdapter(
         onTagDiscovered(NfcResultSuccess(tag))
       }
     }
+  }
+
+  override fun waitForCardRemoval() {
+    if (!isWaitingForCardRemoval) {
+      isWaitingForCardRemoval = true
+      while (isWaitingForCardRemoval) {
+        try {
+          transmitApdu(HexUtil.toByteArray(PING_APDU))
+          Thread.sleep(100)
+        } catch (_: CardIOException) {
+          nfcReader.disconnect()
+          isWaitingForCardRemoval = false
+        }
+      }
+    }
+  }
+
+  override fun stopWaitForCardRemoval() {
+    isWaitingForCardRemoval = false
   }
 
   private data class SkyEcpConfig(
