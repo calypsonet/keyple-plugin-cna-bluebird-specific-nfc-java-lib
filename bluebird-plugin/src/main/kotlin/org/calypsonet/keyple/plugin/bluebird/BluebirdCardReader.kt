@@ -14,15 +14,11 @@ package org.calypsonet.keyple.plugin.bluebird
 import org.eclipse.keyple.core.common.KeypleReaderExtension
 
 /**
- * Interface of the Bluebird contactless reader.
+ * Extends the `KeypleReaderExtension` interface dedicated to the Bluebird card reader.
  *
- * @since 2.0.0
+ * @since 3.0.0
  */
-interface BluebirdContactlessReader : KeypleReaderExtension {
-
-  companion object {
-    const val READER_NAME = "BluebirdContactlessReader"
-  }
+interface BluebirdCardReader : KeypleReaderExtension {
 
   /**
    * Sets the payload to be sent with the VASUP polling mode. The expected content of the VASUP

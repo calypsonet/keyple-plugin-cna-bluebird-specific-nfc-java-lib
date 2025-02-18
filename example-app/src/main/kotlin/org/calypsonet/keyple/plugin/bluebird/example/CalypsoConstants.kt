@@ -9,7 +9,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  ************************************************************************************** */
-package org.calypsonet.keyple.plugin.bluebird.example.util
+package org.calypsonet.keyple.plugin.bluebird.example
 
 /**
  * Helper class to provide specific elements to handle Calypso cards.
@@ -21,7 +21,7 @@ package org.calypsonet.keyple.plugin.bluebird.example.util
  * * Contract List
  * * Contracts
  */
-object CalypsoClassicInfo {
+object CalypsoConstants {
   /** AID: Keyple test kit profile 1, Application 2 */
   const val AID = "315449432E49434131"
 

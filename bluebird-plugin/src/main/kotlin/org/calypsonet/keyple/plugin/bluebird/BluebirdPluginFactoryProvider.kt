@@ -14,12 +14,19 @@ package org.calypsonet.keyple.plugin.bluebird
 import android.app.Activity
 
 /**
- * Provider of the Bluebird Plugin factory.
+ * Provider of [BluebirdPluginFactory] instances.
  *
  * @since 2.0.0
  */
 object BluebirdPluginFactoryProvider {
-  fun getFactory(activity: Activity): BluebirdPluginFactory {
+
+  /**
+   * Provides an instance of [BluebirdPluginFactory].
+   *
+   * @param activity The activity.
+   * @since 3.0.0
+   */
+  fun provideFactory(activity: Activity): BluebirdPluginFactory {
     return BluebirdPluginFactoryAdapter(activity)
   }
 }

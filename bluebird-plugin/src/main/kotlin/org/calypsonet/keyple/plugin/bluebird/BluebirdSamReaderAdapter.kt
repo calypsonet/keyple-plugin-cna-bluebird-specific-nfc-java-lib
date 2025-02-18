@@ -16,16 +16,12 @@ import android.os.HandlerThread
 import android.os.Message
 import com.bluebird.payment.sam.SamInterface
 import kotlinx.coroutines.*
+import org.calypsonet.keypl.BluebirdConstants
 import org.eclipse.keyple.core.plugin.CardIOException
 import org.eclipse.keyple.core.plugin.spi.reader.ReaderSpi
 import org.eclipse.keyple.core.util.HexUtil
 
-/**
- * Adapter of [BluebirdContactReader]
- *
- * @since 2.0.0
- */
-internal class BluebirdContactReaderAdapter : BluebirdContactReader, ReaderSpi {
+internal class BluebirdSamReaderAdapter : BluebirdSamReader, ReaderSpi {
 
   private val samInterface = SamInterface(SamMessageHandler)
   private var atr: ByteArray? = null
@@ -61,7 +57,7 @@ internal class BluebirdContactReaderAdapter : BluebirdContactReader, ReaderSpi {
     return false
   }
 
-  override fun getName(): String = BluebirdContactReader.READER_NAME
+  override fun getName(): String = BluebirdConstants.SAM_READER_NAME
 
   override fun onUnregister() {
     samInterface.device_Close()

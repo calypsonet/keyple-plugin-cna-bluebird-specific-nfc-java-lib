@@ -18,9 +18,4 @@ import org.eclipse.keyple.core.common.KeyplePluginExtension
  *
  * @since 2.0.0
  */
-interface BluebirdPlugin : KeyplePluginExtension {
-  companion object {
-    const val PLUGIN_NAME = "BluebirdPlugin"
-    const val BLUEBIRD_SAM_PERMISSION = "com.bluebird.permission.SAM_DEVICE_ACCESS"
-  }
-}
+interface BluebirdPlugin : KeyplePluginExtension

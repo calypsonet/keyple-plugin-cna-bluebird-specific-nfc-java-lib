@@ -9,10 +9,13 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  ************************************************************************************** */
-package org.calypsonet.keyple.plugin.bluebird.example.model
+package org.calypsonet.keyple.plugin.bluebird
 
-data class ChoiceEventModel(
-    val title: String,
-    val choices: List<String> = arrayListOf(),
-    val callback: (choice: String) -> Unit
-) : EventModel(TYPE_MULTICHOICE, title)
+import org.eclipse.keyple.core.common.KeypleReaderExtension
+
+/**
+ * Extends the `KeypleReaderExtension` interface dedicated to the Bluebird SAM reader.
+ *
+ * @since 3.0.0
+ */
+interface BluebirdSamReader : KeypleReaderExtension

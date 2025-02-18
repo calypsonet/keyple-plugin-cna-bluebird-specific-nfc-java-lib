@@ -85,27 +85,12 @@ dependencies {
     implementation("org.eclipse.keyple:keyple-plugin-java-api:2.3.1")
     implementation("org.eclipse.keyple:keyple-util-java-lib:2.4.0")
 
-    //android
-    implementation("androidx.legacy:legacy-support-v4:1.0.0")
-    implementation("androidx.appcompat:appcompat:1.1.0")
-
     //Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     //logging
-    implementation("org.slf4j:slf4j-api:1.7.32")
-    implementation("com.jakewharton.timber:timber:4.7.1")
-    implementation("com.arcao:slf4j-timber:3.1@aar")
-
-    /** Test **/
-    testImplementation("androidx.test:core-ktx:1.3.0")
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("io.mockk:mockk:1.9")
-    testImplementation("org.robolectric:robolectric:4.3.1")
-
-    androidTestImplementation("androidx.test.ext:junit:1.1.1")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.2.0")
+    implementation("com.jakewharton.timber:timber:5.0.1")
 }
 
 tasks {

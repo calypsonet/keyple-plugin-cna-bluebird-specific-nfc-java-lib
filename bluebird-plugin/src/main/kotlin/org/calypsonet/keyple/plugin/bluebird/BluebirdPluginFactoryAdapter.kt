@@ -12,6 +12,7 @@
 package org.calypsonet.keyple.plugin.bluebird
 
 import android.app.Activity
+import org.calypsonet.keypl.BluebirdConstants
 import org.eclipse.keyple.core.common.CommonApiProperties
 import org.eclipse.keyple.core.plugin.PluginApiProperties
 import org.eclipse.keyple.core.plugin.spi.PluginFactorySpi
@@ -25,7 +26,7 @@ import org.eclipse.keyple.core.plugin.spi.PluginSpi
 internal class BluebirdPluginFactoryAdapter internal constructor(private val activity: Activity) :
     BluebirdPluginFactory, PluginFactorySpi {
 
-  override fun getPluginName(): String = BluebirdPlugin.PLUGIN_NAME
+  override fun getPluginName(): String = BluebirdConstants.PLUGIN_NAME
 
   override fun getPlugin(): PluginSpi = BluebirdPluginAdapter(activity)
 

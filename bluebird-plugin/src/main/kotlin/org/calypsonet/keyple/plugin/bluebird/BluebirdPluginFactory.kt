@@ -14,7 +14,9 @@ package org.calypsonet.keyple.plugin.bluebird
 import org.eclipse.keyple.core.common.KeyplePluginExtensionFactory
 
 /**
- * Interface of the Bluebird plugin factory.
+ * Extends the `KeyplePluginExtensionFactory` interface.
+ *
+ * Use [BluebirdPluginFactoryProvider] to retrieve an instance of it.
  *
  * @since 2.0.0
  */
