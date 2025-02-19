@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2022 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2021 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -13,11 +13,9 @@ package org.calypsonet.keyple.plugin.bluebird
 
 import org.eclipse.keyple.core.common.KeypleReaderExtension
 
-interface BluebirdContactlessReader : KeypleReaderExtension {
-
-  companion object {
-    const val READER_NAME = "BluebirdContactlessReader"
-  }
-
-  fun setSkyEcpVasupPayload(vasupPayload: ByteArray)
-}
+/**
+ * Extends the `KeypleReaderExtension` interface dedicated to the Bluebird SAM reader.
+ *
+ * @since 3.0.0
+ */
+interface BluebirdSamReader : KeypleReaderExtension

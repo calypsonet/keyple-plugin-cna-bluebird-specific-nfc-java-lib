@@ -10,8 +10,7 @@ val archivesBaseName: String by project
 
 android {
     namespace = "org.calypsonet.keyple.plugin.bluebird"
-    compileSdk = 34
-    buildToolsVersion = "34.0.0"
+    compileSdk = 35
 
     buildFeatures {
         viewBinding = true
@@ -19,9 +18,6 @@ android {
 
     defaultConfig {
         minSdk = 21
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles("consumer-rules.pro")
     }
 
     buildTypes {
@@ -41,11 +37,8 @@ android {
         targetCompatibility = JavaVersion.toVersion(javaTargetLevel)
     }
 
-    testOptions {
-        unitTests.apply {
-            isReturnDefaultValues = true
-            isIncludeAndroidResources = true
-        }
+    kotlinOptions {
+        jvmTarget = javaTargetLevel
     }
 
     lint {
@@ -62,10 +55,6 @@ android {
         }
     }
 
-    kotlinOptions {
-        jvmTarget = javaTargetLevel
-    }
-
     sourceSets {
         getByName("main").java.srcDirs("src/main/kotlin")
         getByName("debug").java.srcDirs("src/debug/kotlin")
@@ -75,21 +64,19 @@ android {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:${property("kotlinVersion")}")
+    // Kotlin
+    implementation(kotlin("stdlib-jdk8"))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
 
-    // bluebird libs
+    // Bluebird libs
     compileOnly(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
 
-    //keyple
+    // Keyple
     implementation("org.eclipse.keyple:keyple-common-java-api:2.0.1")
     implementation("org.eclipse.keyple:keyple-plugin-java-api:2.3.1")
     implementation("org.eclipse.keyple:keyple-util-java-lib:2.4.0")
 
-    //Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-
-    //logging
+    // Logging
     implementation("com.jakewharton.timber:timber:5.0.1")
 }
 

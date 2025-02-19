@@ -5,6 +5,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+:warning: Major version!
+### Breaking Changes
+- Renamed `BluebirdContactReader` to `BluebirdSamReader`
+- Renamed `BluebirdContactlessReader` to `BluebirdCardReader`
+- Renamed `BluebirdSupportContactlessProtocols` to `BluebirdContactlessProtocols`
+- Changed factory method from `getFactory()` to `provideFactory()`
+### Added
+- New `BluebirdConstants` object containing all constants
+- Enhanced Kotlin documentation with `@since` annotations for API compatibility tracking
+### Changed
+- Moved following constants to `BluebirdConstants`:
+  - `PLUGIN_NAME` (was `BluebirdPlugin.PLUGIN_NAME`)
+  - `BLUEBIRD_SAM_ANDROID_PERMISSION` (was `BluebirdPlugin.BLUEBIRD_SAM_PERMISSION `)
+  - `CARD_READER_NAME` (was `BluebirdContactlessReader.READER_NAME`)
+  - `SAM_READER_NAME` (was `BluebirdContactReader.READER_NAME`)
+### Upgraded
+- Updated Keyple dependencies:
+  - `keyple-common-java-api`: `2.0.0` -> `2.0.1`
+  - `keyple-plugin-java-api`: `2.0.0` -> `2.3.1`
+  - `keyple-util-java-lib`: `2.3.0` -> `2.4.0`
+- Upgraded Kotlin and related libraries
+- Removed test dependencies
+### Technical
+- Enhanced Bluebird low level libraries management
+- Migrated to modern Gradle configuration standards
+- Updated target Android SDK to API 35
 
 ## [2.1.4] - 2024-02-21
 ### Fixed

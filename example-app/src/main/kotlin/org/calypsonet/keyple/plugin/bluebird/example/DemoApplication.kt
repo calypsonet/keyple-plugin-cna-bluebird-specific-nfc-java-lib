@@ -12,13 +12,11 @@
 package org.calypsonet.keyple.plugin.bluebird.example
 
 import android.app.Application
-import androidx.multidex.MultiDex
 import timber.log.Timber
 
 class DemoApplication : Application() {
   override fun onCreate() {
     super.onCreate()
-    MultiDex.install(this)
     Timber.plant(Timber.DebugTree())
   }
 }
