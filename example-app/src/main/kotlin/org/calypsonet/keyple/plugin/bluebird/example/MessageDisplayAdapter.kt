@@ -13,8 +13,8 @@ package org.calypsonet.keyple.plugin.bluebird.example
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.textview.MaterialTextView
 import org.calypsonet.keyple.plugin.bluebird.example.databinding.CardActionMessageBinding
 import org.calypsonet.keyple.plugin.bluebird.example.databinding.CardHeaderMessageBinding
 import org.calypsonet.keyple.plugin.bluebird.example.databinding.CardResultMessageBinding
@@ -44,7 +44,7 @@ class MessageDisplayAdapter(private val messages: List<Message>) :
 
   class MessageViewHolder : RecyclerView.ViewHolder {
     private var binding: Any? = null
-    private val textView: MaterialTextView
+    private val textView: TextView
 
     constructor(binding: CardActionMessageBinding) : super(binding.root) {
       this.binding = binding
@@ -53,12 +53,12 @@ class MessageDisplayAdapter(private val messages: List<Message>) :
 
     constructor(binding: CardResultMessageBinding) : super(binding.root) {
       this.binding = binding
-      textView = binding.cardActionTextView
+      textView = binding.cardResultTextView
     }
 
     constructor(binding: CardHeaderMessageBinding) : super(binding.root) {
       this.binding = binding
-      textView = binding.cardActionTextView
+      textView = binding.cardHeaderTextView
     }
 
     fun bind(message: Message) {

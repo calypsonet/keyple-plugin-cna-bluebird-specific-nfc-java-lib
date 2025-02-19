@@ -1,24 +1,3 @@
 <resources>
-    <string name="app_name">Keyple Bluebird Demo</string>
-    <string name="open_navigation_drawer">Open menu</string>
-    <string name="close_navigation_drawer">Close Menu</string>
-    <string name="alert_dialog_title">NFC Error</string>
-    <string name="alert_dialog_message">Oops: %s</string>
-    <string name="alert_positive_button">Ok</string>
-    <string name="start_scan">Start scan</string>
-    <string name="quit">Quit</string>
-    <string name="init_error_title">Initialization Error</string>
-    <string name="init_error_message">Unable to initialize the demo</string>
-    <string name="sam_error_title">SAM Error</string>
-    <string name="sam_error_message">Unable to communicate with the SAM</string>
-    <string name="permission_request_title">SAM Access Permission Required</string>
-    <string name="permission_request_message">
-        Please grant access to the SAM.
-        This permission request appears only on the first use, and the application must be restarted
-        after granting it.
-    </string>
-    <string name="permission_denied_title">SAM Access Permission Denied</string>
-    <string name="permission_denied_message">
-        You must accept the requested permissions to continue.
-        Please relaunch the app.</string>
+    <string name="app_name">Keyple Bluebird Demo App</string>
 </resources>

@@ -17,7 +17,6 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
-import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -39,7 +38,6 @@ import org.eclipse.keyple.core.util.HexUtil
 import org.eclipse.keypop.calypso.card.WriteAccessLevel
 import org.eclipse.keypop.calypso.card.card.CalypsoCard
 import org.eclipse.keypop.calypso.card.transaction.ChannelControl.CLOSE_AFTER
-import org.eclipse.keypop.calypso.card.transaction.ChannelControl.KEEP_OPEN
 import org.eclipse.keypop.calypso.card.transaction.SecureRegularModeTransactionManager
 import org.eclipse.keypop.calypso.card.transaction.SymmetricCryptoSecuritySetting
 import org.eclipse.keypop.calypso.crypto.legacysam.sam.LegacySam
@@ -54,27 +52,21 @@ import timber.log.Timber
 class MainActivity :
     AppCompatActivity(), CardReaderObserverSpi, CardReaderObservationExceptionHandlerSpi {
 
-  private val smartCardService = SmartCardServiceProvider.getService()
-  private val readerApiFactory: ReaderApiFactory =
-      SmartCardServiceProvider.getService().readerApiFactory
-  private val calypsoExtensionService = CalypsoExtensionService.getInstance()
-  private val cardSelectionManager = smartCardService.readerApiFactory.createCardSelectionManager()
+  private val cardSelectionManager =
+      SmartCardServiceProvider.getService().readerApiFactory.createCardSelectionManager()
+  private lateinit var securitySettings: SymmetricCryptoSecuritySetting
 
   private lateinit var cardReader: ObservableCardReader
   private lateinit var samReader: CardReader
-  private var isInitialized = false
+  private var isInitializationFinalized = false
 
   private lateinit var binding: ActivityMainBinding
   private lateinit var messageDisplayAdapter: RecyclerView.Adapter<*>
-  private lateinit var layoutManager: RecyclerView.LayoutManager
   private val messages = arrayListOf<Message>()
-
-  private lateinit var securitySettings: SymmetricCryptoSecuritySetting
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    initViews()
-    initRecyclerView()
+    initUI()
     if (ContextCompat.checkSelfPermission(
         this, BluebirdConstants.BLUEBIRD_SAM_ANDROID_PERMISSION) ==
         PackageManager.PERMISSION_GRANTED) {
@@ -88,15 +80,15 @@ class MainActivity :
 
   override fun onResume() {
     super.onResume()
-    if (isInitialized) {
+    if (isInitializationFinalized) {
       cardReader.startCardDetection(REPEATING)
       addMessage(
-          MessageType.ACTION, "Waiting for card presentation...\nAID=${CalypsoConstants.AID}")
+          MessageType.ACTION, "Waiting for card presentation...\nAID: ${CalypsoConstants.AID}")
     }
   }
 
   override fun onPause() {
-    if (isInitialized) {
+    if (isInitializationFinalized) {
       cardReader.stopCardDetection()
       addMessage(MessageType.ACTION, "Card detection stopped")
     }
@@ -104,41 +96,28 @@ class MainActivity :
   }
 
   override fun onDestroy() {
-    if (isInitialized) {
+    if (isInitializationFinalized) {
       cardReader.let { cardReader.removeObserver(this) }
-      smartCardService?.plugins?.forEach { smartCardService?.unregisterPlugin(it.name) }
+      SmartCardServiceProvider.getService()?.plugins?.forEach {
+        SmartCardServiceProvider.getService()?.unregisterPlugin(it.name)
+      }
     }
     super.onDestroy()
   }
 
-  private fun initViews() {
+  private fun initUI() {
     binding = ActivityMainBinding.inflate(layoutInflater)
     setContentView(binding.root)
+
     setSupportActionBar(binding.toolbar)
-    val actionBar = supportActionBar
-    actionBar?.title = "Keyple demo"
-    actionBar?.subtitle = "Bluebird Plugin"
-  }
+    supportActionBar?.title = getString(R.string.app_name)
+    supportActionBar?.subtitle = "Bluebird Plugin"
 
-  private fun initRecyclerView() {
     messageDisplayAdapter = MessageDisplayAdapter(messages)
-    layoutManager = LinearLayoutManager(this)
-    binding.messageRecyclerView.layoutManager = layoutManager
+    binding.messageRecyclerView.layoutManager = LinearLayoutManager(this)
     binding.messageRecyclerView.adapter = messageDisplayAdapter
-    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-  }
 
-  private fun showAlertDialogWithAction(
-      @StringRes titleRes: Int,
-      @StringRes messageRes: Int,
-      onOkClick: () -> Unit
-  ) {
-    AlertDialog.Builder(this)
-        .setTitle(getString(titleRes))
-        .setMessage(getString(messageRes))
-        .setPositiveButton("OK") { _, _ -> onOkClick() }
-        .setCancelable(false)
-        .show()
+    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
   }
 
   private fun addMessage(type: MessageType, message: String) {
@@ -148,6 +127,19 @@ class MainActivity :
       binding.messageRecyclerView.smoothScrollToPosition(messages.size - 1)
     }
     Timber.d("${type.name}: %s", message)
+  }
+
+  private fun showAlertDialogWithAction(
+      titleRes: String,
+      messageRes: String,
+      onOkClick: () -> Unit
+  ) {
+    AlertDialog.Builder(this)
+        .setTitle(titleRes)
+        .setMessage(messageRes)
+        .setPositiveButton("OK") { _, _ -> onOkClick() }
+        .setCancelable(false)
+        .show()
   }
 
   private fun checkSamAccessPermission() {
@@ -160,45 +152,50 @@ class MainActivity :
           } else {
             Timber.i("Permission denied")
             showAlertDialogWithAction(
-                R.string.permission_denied_title,
-                R.string.permission_denied_message,
+                "SAM Access Permission Denied",
+                "You must accept the requested permissions to continue. Please relaunch the app.",
                 onOkClick = { finishAffinity() })
           }
         }
     Timber.d("Showing permission request dialog")
     showAlertDialogWithAction(
-        R.string.permission_request_title,
-        R.string.permission_request_message,
+        "SAM Access Permission Required",
+        "Please grant access to the SAM. This permission request appears only on the first use, and the application must be restarted after granting it.",
         onOkClick = {
           requestPermissionLauncher.launch(BluebirdConstants.BLUEBIRD_SAM_ANDROID_PERMISSION)
         })
   }
 
   private fun finalizeInitialization() {
-
     try {
       initReaders()
       initSecuritySettings()
       prepareCardSelection()
-    } catch (_: Exception) {
-      showAlertDialogWithAction(R.string.init_error_title, R.string.init_error_message) {
+    } catch (e: Exception) {
+      Timber.e(e, "Initialization Error: ${e.message}")
+      showAlertDialogWithAction("Initialization Error", "Unable to initialize the application") {
         finishAffinity()
       }
     }
-    isInitialized = true
+    isInitializationFinalized = true
   }
 
   private fun initReaders() {
     Timber.i("Initializing readers...")
-    val pluginFactory = BluebirdPluginFactoryProvider.provideFactory(this)
 
-    val bluebirdPlugin = smartCardService.registerPlugin(pluginFactory)
+    // register plugin
+    val bluebirdPlugin =
+        SmartCardServiceProvider.getService()
+            .registerPlugin(BluebirdPluginFactoryProvider.provideFactory(this))
+
+    // init card reader
     cardReader =
         bluebirdPlugin.getReader(BluebirdConstants.CARD_READER_NAME) as ObservableCardReader
 
     cardReader.setReaderObservationExceptionHandler(this)
     cardReader.addObserver(this)
 
+    // configure ECP
     bluebirdPlugin
         .getReaderExtension(BluebirdCardReader::class.java, BluebirdConstants.CARD_READER_NAME)
         .setSkyEcpVasupPayload(HexUtil.toByteArray(CalypsoConstants.VASUP_PAYLOAD))
@@ -209,6 +206,7 @@ class MainActivity :
       activateProtocol(BluebirdContactlessProtocols.ISO_14443_4_B_SKY_ECP.name, "ISO_14443_4_CARD")
     }
 
+    // init SAM reader
     samReader = bluebirdPlugin.getReader(BluebirdConstants.SAM_READER_NAME)
     Timber.i("Readers initialized")
   }
@@ -216,10 +214,11 @@ class MainActivity :
   private fun initSecuritySettings() {
     Timber.i("Initializing security settings...")
     val samSelectionManager: CardSelectionManager =
-        smartCardService.readerApiFactory.createCardSelectionManager()
+        SmartCardServiceProvider.getService().readerApiFactory.createCardSelectionManager()
 
     samSelectionManager.prepareSelection(
-        readerApiFactory
+        SmartCardServiceProvider.getService()
+            .readerApiFactory
             .createBasicCardSelector()
             .filterByPowerOnData(
                 LegacySamUtil.buildPowerOnDataFilter(LegacySam.ProductType.SAM_C1, null)),
@@ -230,19 +229,18 @@ class MainActivity :
     try {
       val samSelectionResult = samSelectionManager.processCardSelectionScenario(samReader)
 
-      val legacySam = samSelectionResult.activeSmartCard!! as LegacySam
-      val cryptoCardTransactionManagerFactory =
-          LegacySamExtensionService.getInstance()
-              .legacySamApiFactory
-              .createSymmetricCryptoCardTransactionManagerFactory(samReader, legacySam)
-
       securitySettings =
-          calypsoExtensionService.calypsoCardApiFactory.createSymmetricCryptoSecuritySetting(
-              cryptoCardTransactionManagerFactory)
+          CalypsoExtensionService.getInstance()
+              .calypsoCardApiFactory
+              .createSymmetricCryptoSecuritySetting(
+                  LegacySamExtensionService.getInstance()
+                      .legacySamApiFactory
+                      .createSymmetricCryptoCardTransactionManagerFactory(
+                          samReader, samSelectionResult.activeSmartCard!! as LegacySam))
     } catch (e: Exception) {
       Timber.e(e, "An exception occurred while selecting the SAM. ${e.message}")
       showAlertDialogWithAction(
-          R.string.sam_error_title, R.string.sam_error_message, onOkClick = { finishAffinity() })
+          "SAM Error", "Unable to communicate with the SAM", onOkClick = { finishAffinity() })
     }
     Timber.i("Security settings initialized")
   }
@@ -250,10 +248,13 @@ class MainActivity :
   private fun prepareCardSelection() {
     Timber.i("Preparing card selection...")
     cardSelectionManager.prepareSelection(
-        smartCardService.readerApiFactory
+        SmartCardServiceProvider.getService()
+            .readerApiFactory
             .createIsoCardSelector()
             .filterByDfName(CalypsoConstants.AID),
-        calypsoExtensionService.calypsoCardApiFactory.createCalypsoCardSelectionExtension())
+        CalypsoExtensionService.getInstance()
+            .calypsoCardApiFactory
+            .createCalypsoCardSelectionExtension())
     cardSelectionManager.scheduleCardSelectionScenario(cardReader, ALWAYS)
     Timber.i("Card selection prepared")
   }
@@ -278,62 +279,58 @@ class MainActivity :
 
   private fun handleCardMatchedEvent(cardReaderEvent: CardReaderEvent) {
     try {
-      addMessage(MessageType.ACTION, "Process selection")
+      addMessage(MessageType.EVENT, "Card matched")
       val selectionsResult =
           cardSelectionManager.parseScheduledCardSelectionsResponse(
               cardReaderEvent.scheduledCardSelectionsResponse)
 
-      addMessage(MessageType.RESULT, "Calypso card selection: SUCCESS")
       val calypsoCard = selectionsResult.activeSmartCard as CalypsoCard
-      addMessage(MessageType.RESULT, "DFNAME: ${HexUtil.toHex(calypsoCard.dfName)}")
-
-      val efEnvironmentHolder =
-          HexUtil.toHex(
-              calypsoCard.getFileBySfi(CalypsoConstants.SFI_EnvironmentAndHolder).data.content)
-
-      addMessage(MessageType.RESULT, "Environment and Holder file: $efEnvironmentHolder")
+      addMessage(MessageType.RESULT, "DFNAME:\n${HexUtil.toHex(calypsoCard.dfName)}")
 
       val cardTransactionManager =
-          calypsoExtensionService.calypsoCardApiFactory.createSecureRegularModeTransactionManager(
-              cardReader, calypsoCard, securitySettings)
+          CalypsoExtensionService.getInstance()
+              .calypsoCardApiFactory
+              .createSecureRegularModeTransactionManager(cardReader, calypsoCard, securitySettings)
 
-      addMessage(MessageType.ACTION, "Read EventLog and counter in secure session")
+      addMessage(MessageType.ACTION, "Starting secure transaction...")
+
+      val d1 = System.currentTimeMillis()
+
       (cardTransactionManager as SecureRegularModeTransactionManager)
           .prepareOpenSecureSession(WriteAccessLevel.LOAD)
+          .prepareReadRecords(
+              CalypsoConstants.SFI_EnvironmentAndHolder,
+              CalypsoConstants.RECORD_NUMBER_1,
+              CalypsoConstants.RECORD_NUMBER_1,
+              CalypsoConstants.RECORD_SIZE)
           .prepareReadRecords(
               CalypsoConstants.SFI_EventLog,
               CalypsoConstants.RECORD_NUMBER_1,
               CalypsoConstants.RECORD_NUMBER_1,
               CalypsoConstants.RECORD_SIZE)
-          .prepareReadRecords(
-              CalypsoConstants.SFI_Counter1,
-              CalypsoConstants.RECORD_NUMBER_1,
-              CalypsoConstants.RECORD_NUMBER_1,
-              CalypsoConstants.RECORD_SIZE)
-          .processCommands(KEEP_OPEN)
-      val eventLog =
-          HexUtil.toHex(calypsoCard.getFileBySfi(CalypsoConstants.SFI_EventLog).data.content)
-      val counter =
-          calypsoCard
-              .getFileBySfi(CalypsoConstants.SFI_Counter1)
-              .data
-              .getContentAsCounterValue(CalypsoConstants.RECORD_NUMBER_1)
-      addMessage(MessageType.RESULT, "EventLog file: $eventLog")
-      addMessage(MessageType.RESULT, "Counter value: $counter")
-      addMessage(MessageType.ACTION, "Increment counter by 1 and close session")
-      cardTransactionManager
-          .prepareIncreaseCounter(CalypsoConstants.SFI_Counter1, 1, 1)
           .prepareCloseSecureSession()
           .processCommands(CLOSE_AFTER)
-      addMessage(MessageType.RESULT, "Closing session: SUCCESS")
 
-      addMessage(MessageType.RESULT, "End of the Calypso card processing.")
-      addMessage(MessageType.RESULT, "You can remove the card now")
+      val d2 = System.currentTimeMillis()
+
+      val efEnvironmentHolder =
+          HexUtil.toHex(
+              calypsoCard.getFileBySfi(CalypsoConstants.SFI_EnvironmentAndHolder).data.content)
+
+      val eventLog =
+          HexUtil.toHex(calypsoCard.getFileBySfi(CalypsoConstants.SFI_EventLog).data.content)
+
+      addMessage(
+          MessageType.RESULT,
+          "EnvironmentHolder file:\n$efEnvironmentHolder\n\nEventLog file:\n$eventLog")
+
+      addMessage(MessageType.ACTION, "Transaction duration: ${d2-d1} ms")
     } catch (e: Exception) {
       Timber.e(e)
       addMessage(MessageType.RESULT, "Exception: ${e.message}")
     } finally {
       cardReader.finalizeCardProcessing()
+      addMessage(MessageType.ACTION, "Waiting for card removal...")
     }
   }
 
@@ -341,12 +338,12 @@ class MainActivity :
     addMessage(
         MessageType.EVENT,
         "Unrecognized card: ${(cardReader as ConfigurableCardReader).currentProtocol}")
-    addMessage(MessageType.ACTION, "Waiting for card removal...")
     cardReader.finalizeCardProcessing()
+    addMessage(MessageType.ACTION, "Waiting for card removal...")
   }
 
   private fun handleCardRemovedEvent() {
     addMessage(MessageType.EVENT, "Card removed")
-    addMessage(MessageType.ACTION, "Waiting for card presentation...\nAID=${CalypsoConstants.AID}")
+    addMessage(MessageType.ACTION, "Waiting for card presentation...\nAID: ${CalypsoConstants.AID}")
   }
 }

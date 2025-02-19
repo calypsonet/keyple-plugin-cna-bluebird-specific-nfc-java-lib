@@ -23,7 +23,7 @@ package org.calypsonet.keyple.plugin.bluebird.example
  */
 object CalypsoConstants {
   /** AID: Keyple test kit profile 1, Application 2 */
-  const val AID = "315449432E49434131"
+  const val AID = "315449432E"
 
   // / ** 1TIC.ICA AID */
   // public final static String AID = "315449432E494341";
