@@ -22,7 +22,6 @@ import com.bluebird.extnfc.ExtNfcReader
 import com.bluebird.extnfc.ExtNfcReader.ResultCode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.calypsonet.keypl.BluebirdConstants
 import org.eclipse.keyple.core.plugin.CardIOException
 import org.eclipse.keyple.core.plugin.CardInsertionWaiterAsynchronousApi
 import org.eclipse.keyple.core.plugin.spi.reader.ConfigurableReaderSpi

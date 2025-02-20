@@ -9,10 +9,10 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  ************************************************************************************** */
-package org.calypsonet.keypl
+package org.calypsonet.keyple.plugin.bluebird
 
 /**
- * Constants for the Android NFC plugin.
+ * Constants for the Bluebird plugin.
  *
  * @since 3.0.0
  */

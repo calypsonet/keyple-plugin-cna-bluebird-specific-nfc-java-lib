@@ -25,8 +25,8 @@ import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.calypsonet.keypl.BluebirdConstants
 import org.calypsonet.keyple.plugin.bluebird.*
+import org.calypsonet.keyple.plugin.bluebird.BluebirdConstants
 import org.calypsonet.keyple.plugin.bluebird.example.MessageDisplayAdapter.Message
 import org.calypsonet.keyple.plugin.bluebird.example.MessageDisplayAdapter.MessageType
 import org.calypsonet.keyple.plugin.bluebird.example.databinding.ActivityMainBinding

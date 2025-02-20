@@ -12,7 +12,6 @@
 package org.calypsonet.keyple.plugin.bluebird
 
 import android.app.Activity
-import org.calypsonet.keypl.BluebirdConstants
 import org.eclipse.keyple.core.plugin.spi.PluginSpi
 import org.eclipse.keyple.core.plugin.spi.reader.ReaderSpi
 

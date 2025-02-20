@@ -16,7 +16,6 @@ import android.os.HandlerThread
 import android.os.Message
 import com.bluebird.payment.sam.SamInterface
 import kotlinx.coroutines.*
-import org.calypsonet.keypl.BluebirdConstants
 import org.eclipse.keyple.core.plugin.CardIOException
 import org.eclipse.keyple.core.plugin.spi.reader.ReaderSpi
 import org.eclipse.keyple.core.util.HexUtil
