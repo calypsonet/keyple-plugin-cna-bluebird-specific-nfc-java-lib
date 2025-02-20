@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2021 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -12,7 +12,6 @@
 package org.calypsonet.keyple.plugin.bluebird
 
 import android.app.Activity
-import java.util.concurrent.ConcurrentHashMap
 import org.calypsonet.keypl.BluebirdConstants
 import org.eclipse.keyple.core.plugin.spi.PluginSpi
 import org.eclipse.keyple.core.plugin.spi.reader.ReaderSpi
@@ -26,17 +25,8 @@ internal class BluebirdPluginAdapter(private val activity: Activity) : BluebirdP
 
   override fun getName(): String = BluebirdConstants.PLUGIN_NAME
 
-  override fun searchAvailableReaders(): MutableSet<ReaderSpi> {
-    val readers = ConcurrentHashMap<String, ReaderSpi>(2)
-
-    val contactReader = BluebirdSamReaderAdapter()
-    readers[contactReader.name] = contactReader
-
-    val contactlessReader = BluebirdCardReaderAdapter(activity)
-    readers[contactlessReader.name] = contactlessReader
-
-    return readers.map { it.value }.toMutableSet()
-  }
+  override fun searchAvailableReaders(): Set<ReaderSpi> =
+      setOf(BluebirdSamReaderAdapter(), BluebirdCardReaderAdapter(activity))
 
   override fun onUnregister() {
     // Do nothing -> all unregisterBroadcastReceiver operations are handled by readers
