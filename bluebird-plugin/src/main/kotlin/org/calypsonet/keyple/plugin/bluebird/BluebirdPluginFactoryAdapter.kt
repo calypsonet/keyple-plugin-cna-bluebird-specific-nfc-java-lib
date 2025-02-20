@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2021 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -12,6 +12,7 @@
 package org.calypsonet.keyple.plugin.bluebird
 
 import android.app.Activity
+import org.calypsonet.keypl.BluebirdConstants
 import org.eclipse.keyple.core.common.CommonApiProperties
 import org.eclipse.keyple.core.plugin.PluginApiProperties
 import org.eclipse.keyple.core.plugin.spi.PluginFactorySpi
@@ -19,12 +20,13 @@ import org.eclipse.keyple.core.plugin.spi.PluginSpi
 
 /**
  * Implementation of the Bluebird Plugin factory.
+ *
  * @since 2.0.0
  */
 internal class BluebirdPluginFactoryAdapter internal constructor(private val activity: Activity) :
     BluebirdPluginFactory, PluginFactorySpi {
 
-  override fun getPluginName(): String = BluebirdPlugin.PLUGIN_NAME
+  override fun getPluginName(): String = BluebirdConstants.PLUGIN_NAME
 
   override fun getPlugin(): PluginSpi = BluebirdPluginAdapter(activity)
 

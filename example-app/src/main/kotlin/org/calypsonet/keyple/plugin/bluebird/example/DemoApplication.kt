@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2021 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -12,13 +12,11 @@
 package org.calypsonet.keyple.plugin.bluebird.example
 
 import android.app.Application
-import androidx.multidex.MultiDex
 import timber.log.Timber
 
 class DemoApplication : Application() {
   override fun onCreate() {
     super.onCreate()
-    MultiDex.install(this)
     Timber.plant(Timber.DebugTree())
   }
 }

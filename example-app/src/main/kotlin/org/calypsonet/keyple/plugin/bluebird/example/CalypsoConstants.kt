@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2021 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -9,23 +9,21 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  ************************************************************************************** */
-package org.calypsonet.keyple.plugin.bluebird.example.util
+package org.calypsonet.keyple.plugin.bluebird.example
 
 /**
  * Helper class to provide specific elements to handle Calypso cards.
- *
  * * AID application selection (default Calypso AID)
  * * SAM_C1_ATR_REGEX regular expression matching the expected C1 SAM ATR
  * * Files infos (SFI, rec number, etc) for
- *
  * * Environment and Holder
  * * Event Log
  * * Contract List
  * * Contracts
  */
-object CalypsoClassicInfo {
+object CalypsoConstants {
   /** AID: Keyple test kit profile 1, Application 2 */
-  const val AID = "315449432E49434131"
+  const val AID = "315449432E"
 
   // / ** 1TIC.ICA AID */
   // public final static String AID = "315449432E494341";

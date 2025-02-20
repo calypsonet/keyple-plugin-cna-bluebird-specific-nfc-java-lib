@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2022 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -11,21 +11,11 @@
  ************************************************************************************** */
 package org.calypsonet.keyple.plugin.bluebird
 
-enum class BluebirdSupportContactlessProtocols constructor(val value: Int) {
-  ISO_14443_4_A(0x01),
-  ISO_14443_4_A_SKY_ECP(0x81),
-  ISO_14443_4_B(0x02),
-  ISO_14443_4_B_SKY_ECP(0x82),
-  INNOVATRON_B_PRIME(0x04);
+import org.eclipse.keyple.core.common.KeypleReaderExtension
 
-  companion object {
-    fun fromValue(value: Int): BluebirdSupportContactlessProtocols? {
-      for (protocol in values()) {
-        if (protocol.value == value) {
-          return protocol
-        }
-      }
-      return null
-    }
-  }
-}
+/**
+ * Extends the `KeypleReaderExtension` interface dedicated to the Bluebird SAM reader.
+ *
+ * @since 3.0.0
+ */
+interface BluebirdSamReader : KeypleReaderExtension

@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2021 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -15,11 +15,7 @@ import org.eclipse.keyple.core.common.KeyplePluginExtension
 
 /**
  * Interface of the Bluebird plugin.
+ *
  * @since 2.0.0
  */
-interface BluebirdPlugin : KeyplePluginExtension {
-  companion object {
-    const val PLUGIN_NAME = "BluebirdPlugin"
-    const val BLUEBIRD_SAM_PERMISSION = "com.bluebird.permission.SAM_DEVICE_ACCESS"
-  }
-}
+interface BluebirdPlugin : KeyplePluginExtension

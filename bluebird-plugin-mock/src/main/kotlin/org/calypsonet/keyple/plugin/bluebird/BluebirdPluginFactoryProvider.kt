@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2022 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -13,8 +13,20 @@ package org.calypsonet.keyple.plugin.bluebird
 
 import android.app.Activity
 
+/**
+ * Provider of [BluebirdPluginFactory] instances.
+ *
+ * @since 2.0.0
+ */
 object BluebirdPluginFactoryProvider {
-  fun getFactory(activity: Activity): BluebirdPluginFactory {
+
+  /**
+   * Provides an instance of [BluebirdPluginFactory].
+   *
+   * @param activity The activity.
+   * @since 3.0.0
+   */
+  fun provideFactory(activity: Activity): BluebirdPluginFactory {
     throw UnsupportedOperationException("Mocked plugin!")
   }
 }

@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2022 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -13,4 +13,11 @@ package org.calypsonet.keyple.plugin.bluebird
 
 import org.eclipse.keyple.core.common.KeyplePluginExtensionFactory
 
+/**
+ * Extends the `KeyplePluginExtensionFactory` interface.
+ *
+ * Use [BluebirdPluginFactoryProvider] to retrieve an instance of it.
+ *
+ * @since 2.0.0
+ */
 interface BluebirdPluginFactory : KeyplePluginExtensionFactory

@@ -1,5 +1,5 @@
 /* **************************************************************************************
- * Copyright (c) 2021 Calypso Networks Association https://calypsonet.org/
+ * Copyright (c) 2025 Calypso Networks Association https://calypsonet.org/
  *
  * See the NOTICE file(s) distributed with this work for additional information
  * regarding copyright ownership.
@@ -16,19 +16,52 @@ package org.calypsonet.keyple.plugin.bluebird
  *
  * Note: since they are not APDU based, support for SRT512 and MIFARE protocols would require an
  * upgrade.
- * @since 2.0.0
+ *
+ * @since 3.0.0
  */
-enum class BluebirdSupportContactlessProtocols constructor(val value: Int) {
+enum class BluebirdContactlessProtocols(private val techValue: Int) {
+
+  /**
+   * ISO 14443-4 A.
+   *
+   * @since 3.0.0
+   */
   ISO_14443_4_A(0x01),
+
+  /**
+   * ISO 14443-4 A with ECP.
+   *
+   * @since 3.0.0
+   */
   ISO_14443_4_A_SKY_ECP(0x81),
+
+  /**
+   * ISO 14443-4 B.
+   *
+   * @since 3.0.0
+   */
   ISO_14443_4_B(0x02),
+
+  /**
+   * ISO 14443-4 B with ECP.
+   *
+   * @since 3.0.0
+   */
   ISO_14443_4_B_SKY_ECP(0x82),
+
+  /**
+   * INNOVATRON B Prime.
+   *
+   * @since 3.0.0
+   */
   INNOVATRON_B_PRIME(0x04);
 
-  companion object {
-    fun fromValue(value: Int): BluebirdSupportContactlessProtocols? {
+  internal fun getValue(): Int = techValue
+
+  internal companion object {
+    fun fromValue(value: Int): BluebirdContactlessProtocols? {
       for (protocol in values()) {
-        if (protocol.value == value) {
+        if (protocol.techValue == value) {
           return protocol
         }
       }
