@@ -72,7 +72,7 @@ dependencies {
     // End Keyple configuration
 
     // Storage card support
-    implementation("org.eclipse.keyple:keyple-plugin-storage-card-java-api:1.0.0-SNAPSHOT") { isChanging = true}
+    api("org.eclipse.keyple:keyple-plugin-storage-card-java-api:1.0.0-SNAPSHOT") { isChanging = true}
 
     // Logging
     implementation("com.jakewharton.timber:timber:5.0.1")
