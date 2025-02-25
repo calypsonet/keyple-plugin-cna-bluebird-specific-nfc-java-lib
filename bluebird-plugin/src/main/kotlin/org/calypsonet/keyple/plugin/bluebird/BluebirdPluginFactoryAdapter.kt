@@ -16,18 +16,22 @@ import org.eclipse.keyple.core.common.CommonApiProperties
 import org.eclipse.keyple.core.plugin.PluginApiProperties
 import org.eclipse.keyple.core.plugin.spi.PluginFactorySpi
 import org.eclipse.keyple.core.plugin.spi.PluginSpi
+import org.eclipse.keyple.core.plugin.storagecard.ApduInterpreterFactory
 
 /**
  * Implementation of the Bluebird Plugin factory.
  *
  * @since 2.0.0
  */
-internal class BluebirdPluginFactoryAdapter internal constructor(private val activity: Activity) :
-    BluebirdPluginFactory, PluginFactorySpi {
+internal class BluebirdPluginFactoryAdapter
+internal constructor(
+    private val activity: Activity,
+    private val apduInterpreterFactory: ApduInterpreterFactory?
+) : BluebirdPluginFactory, PluginFactorySpi {
 
   override fun getPluginName(): String = BluebirdConstants.PLUGIN_NAME
 
-  override fun getPlugin(): PluginSpi = BluebirdPluginAdapter(activity)
+  override fun getPlugin(): PluginSpi = BluebirdPluginAdapter(activity, apduInterpreterFactory)
 
   override fun getCommonApiVersion(): String = CommonApiProperties.VERSION
 
