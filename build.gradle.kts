@@ -10,7 +10,6 @@ buildscript {
         classpath("com.sun.xml.bind:jaxb-impl:2.3.9")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22")
         classpath("com.android.tools.build:gradle:8.8.1")
-        classpath("org.jetbrains.dokka:dokka-base:2.0.0")
     }
 
     repositories {
