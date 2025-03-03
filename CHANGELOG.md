@@ -6,8 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Added dependency to `org.eclipse.keyple:keyple-plugin-storage-card-java-api:1.0.0` for support of 
-  storage cards
+- Added dependency to `keyple-plugin-storage-card-java-api:1.0.0` for support of storage cards
 ### Build
 - Removed dependency to `keyple-gradle` plugin
 ### Upgraded

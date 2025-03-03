@@ -34,6 +34,7 @@ import org.eclipse.keyple.core.plugin.storagecard.internal.spi.ApduInterpreterFa
 import org.eclipse.keyple.core.plugin.storagecard.internal.spi.ApduInterpreterSpi
 import org.eclipse.keyple.core.util.Assert
 import org.eclipse.keyple.core.util.HexUtil
+import org.json.JSONObject
 import timber.log.Timber
 
 internal class BluebirdCardReaderAdapter(
@@ -69,6 +70,7 @@ internal class BluebirdCardReaderAdapter(
   private var vasupMode: Byte? = null
 
   private lateinit var waitForCardInsertionAutonomousApi: CardInsertionWaiterAsynchronousApi
+  private lateinit var uid: ByteArray
 
   private val apduInterpreter: ApduInterpreterSpi?
 
@@ -118,7 +120,34 @@ internal class BluebirdCardReaderAdapter(
     if (status < 0) {
       throw CardIOException("Open physical channel error: {$status: ${getNfcErrorMessage(status)}}")
     }
+
+    if (currentProtocol == BluebirdContactlessProtocols.STM_SRT512_ST25) {
+      // specific case for STM SRT512/ST25
+      val response = nfcReader.BBextNfcSRT512GetUID()
+      if (response[0] == 0.toByte()) {
+        uid = response.copyOfRange(1, 9)
+      }
+    }
+
+    currentPowerOnData =
+        JSONObject()
+            .put("type", getTypeFromProtocol(currentProtocol!!))
+            .put("uid", HexUtil.toHex(uid))
+            .toString()
+    Timber.d("Power on data: $powerOnData")
     isCardChannelOpen = true
+  }
+
+  private fun getTypeFromProtocol(protocol: BluebirdContactlessProtocols): String {
+    return when (protocol) {
+      BluebirdContactlessProtocols.ISO_14443_4_A -> "ISO14443-4-A"
+      BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP -> "ISO14443-4-A"
+      BluebirdContactlessProtocols.ISO_14443_4_B -> "ISO14443-4-B"
+      BluebirdContactlessProtocols.ISO_14443_4_B_SKY_ECP -> "ISO14443-4-B"
+      BluebirdContactlessProtocols.INNOVATRON_B_PRIME -> "INNOVATRON-B-PRIME"
+      BluebirdContactlessProtocols.STM_SRT512_ST25 -> "ISO14443-3-B"
+      BluebirdContactlessProtocols.NXP_MIFARE_ULTRA_LIGHT -> "ISO14443-3-A"
+    }
   }
 
   override fun closePhysicalChannel() {
@@ -317,26 +346,50 @@ internal class BluebirdCardReaderAdapter(
           BluebirdContactlessProtocols.fromValue(
               intent.getIntExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_TYPE_KEY, -1))
       Timber.d("Discovered tag with protocol: $currentProtocol")
-      currentProtocol?.let {
-        currentPowerOnData =
-            HexUtil.toHex(intent.getByteArrayExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_DATA_KEY))
-        waitForCardInsertionAutonomousApi.onCardInserted()
-      }
+      // the following UID may be overwritten later according to the card tech
+      uid = intent.getByteArrayExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_DATA_KEY) as ByteArray
+      waitForCardInsertionAutonomousApi.onCardInserted()
     }
   }
 
   override fun waitForCardRemoval() {
-    if (!isWaitingForCardRemoval) {
-      isWaitingForCardRemoval = true
+    if (isWaitingForCardRemoval || !nfcReader.isConnected) return
+    isWaitingForCardRemoval = true
+    try {
       while (isWaitingForCardRemoval) {
-        try {
-          transmitApdu(HexUtil.toByteArray(PING_APDU))
-          runBlocking { delay(100) }
-        } catch (_: CardIOException) {
-          nfcReader.disconnect()
-          isWaitingForCardRemoval = false
+        var isCardRemoved: Boolean
+        when (currentProtocol) {
+          BluebirdContactlessProtocols.NXP_MIFARE_ULTRA_LIGHT -> {
+            val response = nfcReader.BBextNfcMifareRead(0)
+            isCardRemoved = response == null || response.size == 1
+          }
+          BluebirdContactlessProtocols.STM_SRT512_ST25 -> {
+            val response = nfcReader.BBextNfcSRT512ReadBlock(0)
+            if (response == null || response.size == 1) {
+              nfcReader.BBextNfcSRT512Completion()
+              isCardRemoved = true
+            } else {
+              isCardRemoved = false
+            }
+          }
+          else -> {
+            try {
+              transmitApdu(HexUtil.toByteArray(PING_APDU))
+              isCardRemoved = false
+            } catch (_: Exception) {
+              isCardRemoved = true
+            }
+          }
         }
+        if (isCardRemoved) {
+          isWaitingForCardRemoval = false
+          break
+        }
+        runBlocking { delay(100) }
       }
+    } finally {
+      nfcReader.disconnect()
+      isWaitingForCardRemoval = false
     }
   }
 
@@ -384,15 +437,65 @@ internal class BluebirdCardReaderAdapter(
         ?: throw CardIOException("Transmit APDU error: ${transmitResult.mResult}")
   }
 
+  override fun getUID(): ByteArray? {
+    return uid
+  }
+
   override fun readBlock(blockNumber: Int, length: Int): ByteArray {
-    return nfcReader.BBextNfcMifareRead(blockNumber.toByte())
-        ?: throw CardIOException("Read block error")
+    when (currentProtocol) {
+      BluebirdContactlessProtocols.NXP_MIFARE_ULTRA_LIGHT -> {
+        val response =
+            nfcReader.BBextNfcMifareRead(blockNumber.toByte())
+                ?: throw CardIOException("Read block error: BBextNfcMifareRead returned null")
+        if (response.size == 17) {
+          if (response[0] == 0.toByte()) {
+            return response.copyOfRange(1, 17)
+          } else {
+            throw CardIOException(
+                "Read block error: operation failed with result code ${response[0]}")
+          }
+        } else {
+          throw CardIOException("Read block error: invalid response format")
+        }
+      }
+      BluebirdContactlessProtocols.STM_SRT512_ST25 -> {
+        val response =
+            nfcReader.BBextNfcSRT512ReadBlock(blockNumber.toByte())
+                ?: throw CardIOException("Read block error: BBextNfcSRT512ReadBlock returned null")
+        if (response.size == 5) {
+          if (response[0] == 0.toByte()) {
+            return response.copyOfRange(1, 5)
+          } else {
+            throw CardIOException(
+                "Read block error: operation failed with result code ${response[0]}")
+          }
+        } else {
+          throw CardIOException("Read block error: invalid response format")
+        }
+      }
+      else -> {
+        throw CardIOException("Read block error: protocol not supported: $currentProtocol")
+      }
+    }
   }
 
   override fun writeBlock(blockNumber: Int, data: ByteArray) {
-    var status = nfcReader.BBextNfcMifareWrite(blockNumber.toByte(), data)
-    if (status != ResultCode.SUCCESS) {
-      throw CardIOException("Write block error: ${getNfcErrorMessage(status)}")
+    when (currentProtocol) {
+      BluebirdContactlessProtocols.NXP_MIFARE_ULTRA_LIGHT -> {
+        val resultCode = nfcReader.BBextNfcMifareWrite(blockNumber.toByte(), data)
+        if (resultCode != 0) {
+          throw CardIOException("Write block error: operation failed with result code $resultCode")
+        }
+      }
+      BluebirdContactlessProtocols.STM_SRT512_ST25 -> {
+        val resultCode = nfcReader.BBextNfcSRT512WriteBlock(blockNumber.toByte(), data)
+        if (resultCode != 0) {
+          throw CardIOException("Write block error: operation failed with result code $resultCode")
+        }
+      }
+      else -> {
+        throw CardIOException("Write block error: protocol not supported: $currentProtocol")
+      }
     }
   }
 }
