@@ -121,7 +121,7 @@ internal class BluebirdCardReaderAdapter(
       throw CardIOException("Open physical channel error: {$status: ${getNfcErrorMessage(status)}}")
     }
 
-    if (currentProtocol == BluebirdContactlessProtocols.STM_SRT512_ST25) {
+    if (currentProtocol == BluebirdContactlessProtocols.ST25_SRT512) {
       // specific case for STM SRT512/ST25
       val response = nfcReader.BBextNfcSRT512GetUID()
       if (response[0] == 0.toByte()) {
@@ -145,8 +145,8 @@ internal class BluebirdCardReaderAdapter(
       BluebirdContactlessProtocols.ISO_14443_4_B -> "ISO14443-4-B"
       BluebirdContactlessProtocols.ISO_14443_4_B_SKY_ECP -> "ISO14443-4-B"
       BluebirdContactlessProtocols.INNOVATRON_B_PRIME -> "INNOVATRON-B-PRIME"
-      BluebirdContactlessProtocols.STM_SRT512_ST25 -> "ISO14443-3-B"
-      BluebirdContactlessProtocols.NXP_MIFARE_ULTRA_LIGHT -> "ISO14443-3-A"
+      BluebirdContactlessProtocols.ST25_SRT512 -> "ISO14443-3-B"
+      BluebirdContactlessProtocols.MIFARE_ULTRALIGHT -> "ISO14443-3-A"
     }
   }
 
@@ -210,12 +210,12 @@ internal class BluebirdCardReaderAdapter(
       BluebirdContactlessProtocols.INNOVATRON_B_PRIME.name ->
           pollingProtocols =
               pollingProtocols or BluebirdContactlessProtocols.INNOVATRON_B_PRIME.getValue()
-      BluebirdContactlessProtocols.STM_SRT512_ST25.name ->
+      BluebirdContactlessProtocols.ST25_SRT512.name ->
           pollingProtocols =
-              pollingProtocols or BluebirdContactlessProtocols.STM_SRT512_ST25.getValue()
-      BluebirdContactlessProtocols.NXP_MIFARE_ULTRA_LIGHT.name ->
+              pollingProtocols or BluebirdContactlessProtocols.ST25_SRT512.getValue()
+      BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name ->
           pollingProtocols =
-              pollingProtocols or BluebirdContactlessProtocols.NXP_MIFARE_ULTRA_LIGHT.getValue()
+              pollingProtocols or BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.getValue()
       BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP.name -> {
         checkEcpAvailability()
         check(vasupMode != ExtNfcReader.ECP.Mode.VASUP_B) { "SKY ECP VASUP type B is set" }
@@ -248,13 +248,13 @@ internal class BluebirdCardReaderAdapter(
       BluebirdContactlessProtocols.INNOVATRON_B_PRIME.name ->
           pollingProtocols =
               pollingProtocols and BluebirdContactlessProtocols.INNOVATRON_B_PRIME.getValue().inv()
-      BluebirdContactlessProtocols.STM_SRT512_ST25.name ->
+      BluebirdContactlessProtocols.ST25_SRT512.name ->
           pollingProtocols =
-              pollingProtocols and BluebirdContactlessProtocols.STM_SRT512_ST25.getValue().inv()
-      BluebirdContactlessProtocols.NXP_MIFARE_ULTRA_LIGHT.name ->
+              pollingProtocols and BluebirdContactlessProtocols.ST25_SRT512.getValue().inv()
+      BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name ->
           pollingProtocols =
               pollingProtocols and
-                  BluebirdContactlessProtocols.NXP_MIFARE_ULTRA_LIGHT.getValue().inv()
+                  BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.getValue().inv()
       BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP.name,
       BluebirdContactlessProtocols.ISO_14443_4_B_SKY_ECP.name -> {
         checkEcpAvailability()
@@ -359,11 +359,11 @@ internal class BluebirdCardReaderAdapter(
       while (isWaitingForCardRemoval) {
         var isCardRemoved: Boolean
         when (currentProtocol) {
-          BluebirdContactlessProtocols.NXP_MIFARE_ULTRA_LIGHT -> {
+          BluebirdContactlessProtocols.MIFARE_ULTRALIGHT -> {
             val response = nfcReader.BBextNfcMifareRead(0)
             isCardRemoved = response == null || response.size == 1
           }
-          BluebirdContactlessProtocols.STM_SRT512_ST25 -> {
+          BluebirdContactlessProtocols.ST25_SRT512 -> {
             val response = nfcReader.BBextNfcSRT512ReadBlock(0)
             if (response == null || response.size == 1) {
               nfcReader.BBextNfcSRT512Completion()
@@ -443,7 +443,7 @@ internal class BluebirdCardReaderAdapter(
 
   override fun readBlock(blockNumber: Int, length: Int): ByteArray {
     when (currentProtocol) {
-      BluebirdContactlessProtocols.NXP_MIFARE_ULTRA_LIGHT -> {
+      BluebirdContactlessProtocols.MIFARE_ULTRALIGHT -> {
         val response =
             nfcReader.BBextNfcMifareRead(blockNumber.toByte())
                 ?: throw CardIOException("Read block error: BBextNfcMifareRead returned null")
@@ -458,7 +458,7 @@ internal class BluebirdCardReaderAdapter(
           throw CardIOException("Read block error: invalid response format")
         }
       }
-      BluebirdContactlessProtocols.STM_SRT512_ST25 -> {
+      BluebirdContactlessProtocols.ST25_SRT512 -> {
         val response =
             nfcReader.BBextNfcSRT512ReadBlock(blockNumber.toByte())
                 ?: throw CardIOException("Read block error: BBextNfcSRT512ReadBlock returned null")
@@ -481,13 +481,13 @@ internal class BluebirdCardReaderAdapter(
 
   override fun writeBlock(blockNumber: Int, data: ByteArray) {
     when (currentProtocol) {
-      BluebirdContactlessProtocols.NXP_MIFARE_ULTRA_LIGHT -> {
+      BluebirdContactlessProtocols.MIFARE_ULTRALIGHT -> {
         val resultCode = nfcReader.BBextNfcMifareWrite(blockNumber.toByte(), data)
         if (resultCode != 0) {
           throw CardIOException("Write block error: operation failed with result code $resultCode")
         }
       }
-      BluebirdContactlessProtocols.STM_SRT512_ST25 -> {
+      BluebirdContactlessProtocols.ST25_SRT512 -> {
         val resultCode = nfcReader.BBextNfcSRT512WriteBlock(blockNumber.toByte(), data)
         if (resultCode != 0) {
           throw CardIOException("Write block error: operation failed with result code $resultCode")

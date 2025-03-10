@@ -57,18 +57,18 @@ enum class BluebirdContactlessProtocols(private val techValue: Int) {
   INNOVATRON_B_PRIME(0x04),
 
   /**
-   * STM SRT512/ST25.
+   * STM ST25/SRT512.
    *
    * @since 3.1.0
    */
-  STM_SRT512_ST25(0x08),
+  ST25_SRT512(0x08),
 
   /**
    * NXP Mifare Ultralight.
    *
    * @since 3.1.0
    */
-  NXP_MIFARE_ULTRA_LIGHT(0x20);
+  MIFARE_ULTRALIGHT(0x20);
 
   internal fun getValue(): Int = techValue
 
