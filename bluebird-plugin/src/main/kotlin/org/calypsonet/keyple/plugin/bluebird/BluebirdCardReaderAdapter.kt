@@ -211,8 +211,7 @@ internal class BluebirdCardReaderAdapter(
           pollingProtocols =
               pollingProtocols or BluebirdContactlessProtocols.INNOVATRON_B_PRIME.getValue()
       BluebirdContactlessProtocols.ST25_SRT512.name ->
-          pollingProtocols =
-              pollingProtocols or BluebirdContactlessProtocols.ST25_SRT512.getValue()
+          pollingProtocols = pollingProtocols or BluebirdContactlessProtocols.ST25_SRT512.getValue()
       BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name ->
           pollingProtocols =
               pollingProtocols or BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.getValue()
@@ -253,8 +252,7 @@ internal class BluebirdCardReaderAdapter(
               pollingProtocols and BluebirdContactlessProtocols.ST25_SRT512.getValue().inv()
       BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name ->
           pollingProtocols =
-              pollingProtocols and
-                  BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.getValue().inv()
+              pollingProtocols and BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.getValue().inv()
       BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP.name,
       BluebirdContactlessProtocols.ISO_14443_4_B_SKY_ECP.name -> {
         checkEcpAvailability()

@@ -30,7 +30,10 @@ object BluebirdPluginFactoryProvider {
    *   `keyple-plugin-storage-card-java-api` API, its implementation should be provided.
    * @since 3.0.0 (single-param usage), 3.1.0 (with APDU interpreter)
    */
-  fun provideFactory(activity: Activity, apduInterpreterFactory: ApduInterpreterFactory? = null): BluebirdPluginFactory {
+  fun provideFactory(
+      activity: Activity,
+      apduInterpreterFactory: ApduInterpreterFactory? = null
+  ): BluebirdPluginFactory {
     throw UnsupportedOperationException("Mocked plugin!")
   }
 }

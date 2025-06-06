@@ -1,8 +1,6 @@
 # Java class files
 *.class
 
-# Private libs
-libs/
 
 # Generated files
 gen/
