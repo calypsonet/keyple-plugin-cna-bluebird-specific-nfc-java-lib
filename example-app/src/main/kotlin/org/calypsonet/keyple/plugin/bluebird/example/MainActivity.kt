@@ -22,20 +22,25 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.calypsonet.keyple.card.storagecard.StorageCardExtensionService
 import org.calypsonet.keyple.plugin.bluebird.*
-import org.calypsonet.keyple.plugin.bluebird.BluebirdConstants
 import org.calypsonet.keyple.plugin.bluebird.example.MessageDisplayAdapter.Message
 import org.calypsonet.keyple.plugin.bluebird.example.MessageDisplayAdapter.MessageType
 import org.calypsonet.keyple.plugin.bluebird.example.databinding.ActivityMainBinding
+import org.calypsonet.keyple.plugin.storagecard.ApduInterpreterFactoryProvider
 import org.eclipse.keyple.card.calypso.CalypsoExtensionService
 import org.eclipse.keyple.card.calypso.crypto.legacysam.LegacySamExtensionService
 import org.eclipse.keyple.card.calypso.crypto.legacysam.LegacySamUtil
 import org.eclipse.keyple.core.service.*
+import org.eclipse.keyple.core.util.ByteArrayUtil
 import org.eclipse.keyple.core.util.HexUtil
-import org.eclipse.keypop.calypso.card.WriteAccessLevel
+import org.eclipse.keypop.calypso.card.WriteAccessLevel.DEBIT
+import org.eclipse.keypop.calypso.card.WriteAccessLevel.LOAD
+import org.eclipse.keypop.calypso.card.WriteAccessLevel.PERSONALIZATION
 import org.eclipse.keypop.calypso.card.card.CalypsoCard
 import org.eclipse.keypop.calypso.card.transaction.ChannelControl.CLOSE_AFTER
 import org.eclipse.keypop.calypso.card.transaction.SecureRegularModeTransactionManager
@@ -47,6 +52,9 @@ import org.eclipse.keypop.reader.ObservableCardReader.NotificationMode.ALWAYS
 import org.eclipse.keypop.reader.selection.CardSelectionManager
 import org.eclipse.keypop.reader.spi.CardReaderObservationExceptionHandlerSpi
 import org.eclipse.keypop.reader.spi.CardReaderObserverSpi
+import org.eclipse.keypop.storagecard.card.ProductType.MIFARE_ULTRALIGHT
+import org.eclipse.keypop.storagecard.card.ProductType.ST25_SRT512
+import org.eclipse.keypop.storagecard.card.StorageCard
 import timber.log.Timber
 
 class MainActivity :
@@ -63,6 +71,14 @@ class MainActivity :
   private lateinit var binding: ActivityMainBinding
   private lateinit var messageDisplayAdapter: RecyclerView.Adapter<*>
   private val messages = arrayListOf<Message>()
+
+  private val storageCardExtensionService = StorageCardExtensionService.getInstance()
+
+  companion object {
+    const val ISO_14443_4_LOGICAL_PROTOCOL = "ISO_14443_4"
+    const val MIFARE_ULTRALIGHT_LOGICAL_PROTOCOL = "MIFARE_ULTRALIGHT"
+    const val ST25_SRT512_LOGICAL_PROTOCOL = "ST25_SRT512"
+  }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -83,7 +99,15 @@ class MainActivity :
     if (isInitializationFinalized) {
       cardReader.startCardDetection(REPEATING)
       addMessage(
-          MessageType.ACTION, "Waiting for card presentation...\nAID: ${CalypsoConstants.AID}")
+          MessageType.ACTION,
+          "Waiting for card presentation...\n" +
+              "\nAcceptable cards:" +
+              "\n- Calypso (AID: ${CalypsoConstants.AID})," +
+              if (storageCardExtensionService != null) {
+                "\n- MIFARE Ultralight (MFOC, MFOICU1)" + "\n- ST25/SRT512"
+              } else {
+                ""
+              })
     }
   }
 
@@ -184,9 +208,11 @@ class MainActivity :
     Timber.i("Initializing readers...")
 
     // register plugin
+    val apduInterpreterFactoryProvider = ApduInterpreterFactoryProvider.provideFactory()
     val bluebirdPlugin =
         SmartCardServiceProvider.getService()
-            .registerPlugin(BluebirdPluginFactoryProvider.provideFactory(this))
+            .registerPlugin(
+                BluebirdPluginFactoryProvider.provideFactory(this, apduInterpreterFactoryProvider))
 
     // init card reader
     cardReader =
@@ -201,9 +227,21 @@ class MainActivity :
         .setSkyEcpVasupPayload(HexUtil.toByteArray(CalypsoConstants.VASUP_PAYLOAD))
 
     with(cardReader as ConfigurableCardReader) {
+      // Here, we consider Innovatron B Prime protocol cards to be ISO14443-4 cards. We could have
+      // distinguished between them.
       activateProtocol(
-          BluebirdContactlessProtocols.INNOVATRON_B_PRIME.name, "INNOVATRON_B_PRIME_CARD")
-      activateProtocol(BluebirdContactlessProtocols.ISO_14443_4_B_SKY_ECP.name, "ISO_14443_4_CARD")
+          BluebirdContactlessProtocols.INNOVATRON_B_PRIME.name, ISO_14443_4_LOGICAL_PROTOCOL)
+      // Activate ECP in A Type
+      activateProtocol(
+          BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP.name, ISO_14443_4_LOGICAL_PROTOCOL)
+      // Activate B Type
+      activateProtocol(
+          BluebirdContactlessProtocols.ISO_14443_4_B.name, ISO_14443_4_LOGICAL_PROTOCOL)
+      // Activate MIFARE Ultralight
+      activateProtocol(
+          BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name, MIFARE_ULTRALIGHT_LOGICAL_PROTOCOL)
+      // Activate ST25/SRT512
+      activateProtocol(BluebirdContactlessProtocols.ST25_SRT512.name, ST25_SRT512_LOGICAL_PROTOCOL)
     }
 
     // init SAM reader
@@ -237,6 +275,9 @@ class MainActivity :
                       .legacySamApiFactory
                       .createSymmetricCryptoCardTransactionManagerFactory(
                           samReader, samSelectionResult.activeSmartCard!! as LegacySam))
+              .assignDefaultKif(PERSONALIZATION, 0x21) // required for old Innovatron B Prime cards
+              .assignDefaultKif(LOAD, 0x27)
+              .assignDefaultKif(DEBIT, 0x30)
     } catch (e: Exception) {
       Timber.e(e, "An exception occurred while selecting the SAM. ${e.message}")
       showAlertDialogWithAction(
@@ -251,10 +292,25 @@ class MainActivity :
         SmartCardServiceProvider.getService()
             .readerApiFactory
             .createIsoCardSelector()
+            .filterByCardProtocol(ISO_14443_4_LOGICAL_PROTOCOL)
             .filterByDfName(CalypsoConstants.AID),
         CalypsoExtensionService.getInstance()
             .calypsoCardApiFactory
             .createCalypsoCardSelectionExtension())
+    if (storageCardExtensionService != null) {
+      cardSelectionManager.prepareSelection(
+          SmartCardServiceProvider.getService()
+              .readerApiFactory
+              .createBasicCardSelector()
+              .filterByCardProtocol(MIFARE_ULTRALIGHT_LOGICAL_PROTOCOL),
+          storageCardExtensionService.createStorageCardSelectionExtension(MIFARE_ULTRALIGHT))
+      cardSelectionManager.prepareSelection(
+          SmartCardServiceProvider.getService()
+              .readerApiFactory
+              .createBasicCardSelector()
+              .filterByCardProtocol(ST25_SRT512_LOGICAL_PROTOCOL),
+          storageCardExtensionService.createStorageCardSelectionExtension(ST25_SRT512))
+    }
     cardSelectionManager.scheduleCardSelectionScenario(cardReader, ALWAYS)
     Timber.i("Card selection prepared")
   }
@@ -283,21 +339,40 @@ class MainActivity :
       val selectionsResult =
           cardSelectionManager.parseScheduledCardSelectionsResponse(
               cardReaderEvent.scheduledCardSelectionsResponse)
+      val card = selectionsResult.activeSmartCard
+      when (card) {
+        is CalypsoCard -> {
+          handleCalypsoCard(card)
+        }
+        is StorageCard -> {
+          handleStorageCard(card)
+        }
+        else -> {
+          addMessage(MessageType.RESULT, "Unknown card type")
+        }
+      }
+    } catch (e: Exception) {
+      Timber.e(e)
+      addMessage(MessageType.RESULT, "Exception: ${e.message}")
+    } finally {
+      cardReader.finalizeCardProcessing()
+      addMessage(MessageType.ACTION, "Waiting for card removal...")
+    }
+  }
 
-      val calypsoCard = selectionsResult.activeSmartCard as CalypsoCard
-      addMessage(MessageType.RESULT, "DFNAME:\n${HexUtil.toHex(calypsoCard.dfName)}")
+  private fun handleCalypsoCard(calypsoCard: CalypsoCard) {
+    addMessage(MessageType.RESULT, "CALYPSO DF NAME:\n${HexUtil.toHex(calypsoCard.dfName)}")
 
-      val cardTransactionManager =
-          CalypsoExtensionService.getInstance()
-              .calypsoCardApiFactory
-              .createSecureRegularModeTransactionManager(cardReader, calypsoCard, securitySettings)
+    val cardTransactionManager =
+        CalypsoExtensionService.getInstance()
+            .calypsoCardApiFactory
+            .createSecureRegularModeTransactionManager(cardReader, calypsoCard, securitySettings)
 
-      addMessage(MessageType.ACTION, "Starting secure transaction...")
+    addMessage(MessageType.ACTION, "Starting secure transaction...")
 
-      val d1 = System.currentTimeMillis()
-
+    val duration = measureTimeMillis {
       (cardTransactionManager as SecureRegularModeTransactionManager)
-          .prepareOpenSecureSession(WriteAccessLevel.LOAD)
+          .prepareOpenSecureSession(LOAD)
           .prepareReadRecords(
               CalypsoConstants.SFI_EnvironmentAndHolder,
               CalypsoConstants.RECORD_NUMBER_1,
@@ -310,28 +385,61 @@ class MainActivity :
               CalypsoConstants.RECORD_SIZE)
           .prepareCloseSecureSession()
           .processCommands(CLOSE_AFTER)
-
-      val d2 = System.currentTimeMillis()
-
-      val efEnvironmentHolder =
-          HexUtil.toHex(
-              calypsoCard.getFileBySfi(CalypsoConstants.SFI_EnvironmentAndHolder).data.content)
-
-      val eventLog =
-          HexUtil.toHex(calypsoCard.getFileBySfi(CalypsoConstants.SFI_EventLog).data.content)
-
-      addMessage(
-          MessageType.RESULT,
-          "EnvironmentHolder file:\n$efEnvironmentHolder\n\nEventLog file:\n$eventLog")
-
-      addMessage(MessageType.ACTION, "Transaction duration: ${d2-d1} ms")
-    } catch (e: Exception) {
-      Timber.e(e)
-      addMessage(MessageType.RESULT, "Exception: ${e.message}")
-    } finally {
-      cardReader.finalizeCardProcessing()
-      addMessage(MessageType.ACTION, "Waiting for card removal...")
     }
+
+    val efEnvironmentHolder =
+        HexUtil.toHex(
+            calypsoCard.getFileBySfi(CalypsoConstants.SFI_EnvironmentAndHolder).data.content)
+
+    val eventLog =
+        HexUtil.toHex(calypsoCard.getFileBySfi(CalypsoConstants.SFI_EventLog).data.content)
+
+    addMessage(
+        MessageType.RESULT,
+        "EnvironmentHolder file:\n$efEnvironmentHolder\n\nEventLog file:\n$eventLog")
+
+    addMessage(MessageType.ACTION, "Transaction duration: $duration ms")
+  }
+
+  private fun handleStorageCard(storageCard: StorageCard) {
+    addMessage(
+        MessageType.RESULT,
+        "${storageCard.productType.name} UID:" +
+            "\n${HexUtil.toHex(storageCard.uid)}" +
+            "\n\nPower on data:" +
+            "\n${storageCard.powerOnData}")
+
+    val transactionManager =
+        storageCardExtensionService.createStorageCardTransactionManager(cardReader, storageCard)
+
+    addMessage(MessageType.ACTION, "Starting reading transaction...")
+
+    val duration = measureTimeMillis {
+      transactionManager
+          .prepareReadBlocks(0, storageCard.productType.blockCount - 1)
+          .processCommands(org.eclipse.keypop.storagecard.transaction.ChannelControl.KEEP_OPEN)
+      val incrementedLastBlockVal =
+          ByteArrayUtil.extractInt(
+              storageCard.getBlock(storageCard.productType.blockCount - 1), 0, 4, false) + 1
+      val newLastBlock =
+          byteArrayOf(
+              (incrementedLastBlockVal shr 24).toByte(),
+              (incrementedLastBlockVal shr 16).toByte(),
+              (incrementedLastBlockVal shr 8).toByte(),
+              incrementedLastBlockVal.toByte())
+      transactionManager
+          .prepareWriteBlocks(storageCard.productType.blockCount - 1, newLastBlock)
+          .processCommands(org.eclipse.keypop.storagecard.transaction.ChannelControl.CLOSE_AFTER)
+    }
+
+    val blocksContent =
+        (0 until storageCard.productType.blockCount).joinToString(separator = "\n") { blockNumber ->
+          "Block $blockNumber = ${HexUtil.toHex(storageCard.getBlock(blockNumber))}"
+        }
+
+    addMessage(MessageType.RESULT, "Blocks content:\n$blocksContent")
+
+    addMessage(MessageType.ACTION, "Transaction duration: $duration ms")
   }
 
   private fun handleCardInsertedEvent() {
@@ -344,6 +452,15 @@ class MainActivity :
 
   private fun handleCardRemovedEvent() {
     addMessage(MessageType.EVENT, "Card removed")
-    addMessage(MessageType.ACTION, "Waiting for card presentation...\nAID: ${CalypsoConstants.AID}")
+    addMessage(
+        MessageType.ACTION,
+        "Waiting for card presentation...\n" +
+            "\nAcceptable cards:" +
+            "\n- Calypso (AID: ${CalypsoConstants.AID})," +
+            if (storageCardExtensionService != null) {
+              "\n- MIFARE Ultralight (MFOC, MFOICU1)" + "\n- ST25/SRT512"
+            } else {
+              ""
+            })
   }
 }

@@ -14,18 +14,22 @@ package org.calypsonet.keyple.plugin.bluebird
 import android.app.Activity
 import org.eclipse.keyple.core.plugin.spi.PluginSpi
 import org.eclipse.keyple.core.plugin.spi.reader.ReaderSpi
+import org.eclipse.keyple.core.plugin.storagecard.ApduInterpreterFactory
 
 /**
  * Implementation of the Bluebird Plugin to handle Bluebird contact and contactless readers.
  *
  * @since 2.0.0
  */
-internal class BluebirdPluginAdapter(private val activity: Activity) : BluebirdPlugin, PluginSpi {
+internal class BluebirdPluginAdapter(
+    private val activity: Activity,
+    private val apduInterpreterFactory: ApduInterpreterFactory?
+) : BluebirdPlugin, PluginSpi {
 
   override fun getName(): String = BluebirdConstants.PLUGIN_NAME
 
   override fun searchAvailableReaders(): Set<ReaderSpi> =
-      setOf(BluebirdSamReaderAdapter(), BluebirdCardReaderAdapter(activity))
+      setOf(BluebirdSamReaderAdapter(), BluebirdCardReaderAdapter(activity, apduInterpreterFactory))
 
   override fun onUnregister() {
     // Do nothing -> all unregisterBroadcastReceiver operations are handled by readers
