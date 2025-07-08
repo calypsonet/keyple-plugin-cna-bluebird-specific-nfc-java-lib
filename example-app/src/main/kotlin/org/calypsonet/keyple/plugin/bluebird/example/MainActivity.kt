@@ -237,14 +237,12 @@ class MainActivity :
       // Activate B Type
       activateProtocol(
           BluebirdContactlessProtocols.ISO_14443_4_B.name, ISO_14443_4_LOGICAL_PROTOCOL)
-      if (apduInterpreterFactoryProvider != null) {
         // Activate MIFARE Ultralight
         activateProtocol(
             BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name, MIFARE_ULTRALIGHT_LOGICAL_PROTOCOL)
         // Activate ST25/SRT512
         activateProtocol(
             BluebirdContactlessProtocols.ST25_SRT512.name, ST25_SRT512_LOGICAL_PROTOCOL)
-      }
     }
 
     // init SAM reader

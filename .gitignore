@@ -1,6 +1,8 @@
 # Java class files
 *.class
 
+# Private libs
+bluebird-plugin/libs/
 
 # Generated files
 gen/

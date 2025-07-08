@@ -27,7 +27,7 @@ object BluebirdPluginFactoryProvider {
    * @param activity The activity.
    * @param apduInterpreterFactory (Optional) The `ApduInterpreterFactory` dedicated to the
    *   management of storage cards. The interface of this factory is provided by the
-   *   `keyple-plugin-storage-card-java-api` API, its implementation should be provided.
+   *   `keyple-plugin-storagecard-java-api` API, its implementation should be provided.
    * @since 3.0.0 (single-param usage), 3.1.0 (with APDU interpreter)
    */
   fun provideFactory(

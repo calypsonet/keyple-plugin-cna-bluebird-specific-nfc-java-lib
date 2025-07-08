@@ -70,16 +70,14 @@ dependencies {
     implementation("org.eclipse.keypop:keypop-reader-java-api:2.0.1")
     implementation("org.eclipse.keypop:keypop-calypso-card-java-api:2.1.2")
     implementation("org.eclipse.keypop:keypop-calypso-crypto-legacysam-java-api:0.7.0")
-    implementation("org.eclipse.keypop:keypop-storagecard-java-api:0.1.0-SNAPSHOT")
+    implementation("org.eclipse.keypop:keypop-storagecard-java-api:0.2.0")
     implementation("org.eclipse.keyple:keyple-common-java-api:2.0.2")
+    implementation("org.eclipse.keyple:keyple-plugin-storagecard-java-api:1.0.0")
     implementation("org.eclipse.keyple:keyple-util-java-lib:2.4.0")
     implementation("org.eclipse.keyple:keyple-service-java-lib:3.3.5")
     implementation("org.eclipse.keyple:keyple-card-calypso-java-lib:3.1.8")
     implementation("org.eclipse.keyple:keyple-card-calypso-crypto-legacysam-java-lib:0.9.0")
     // End Keyple configuration
-
-    // Storage card support
-    api("org.eclipse.keyple:keyple-plugin-storage-card-java-api:1.0.0-SNAPSHOT") { isChanging = true}
 
     // Bluebird specific components
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
