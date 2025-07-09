@@ -5,12 +5,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [3.1.0] - 2025-07-09
 ### Added
-- Added dependency to `keyple-plugin-storagecard-java-api:1.0.0` for support of storage cards
-### Build
-- Removed dependency to `keyple-gradle` plugin
+- Added support for storage cards with `keyple-plugin-storagecard-java-api:1.0.0` dependency
+- Added `ST25_SRT512` protocol support for STM ST25/SRT512 cards
+- Added `MIFARE_ULTRALIGHT` protocol support for NXP Mifare Ultralight cards
+- Added optional `ApduInterpreterFactory` parameter to `BluebirdPluginFactoryProvider.provideFactory()` method
+- Added specific card removal detection for MIFARE Ultralight and ST25/SRT512 protocols
+- Added enhanced power-on data with card type and UID information (JSON format)
+- Added GitHub Actions workflows for automated builds and releases
+- Added comprehensive example app support for storage cards (MIFARE Ultralight and ST25/SRT512)
+### Changed
+- Enhanced card detection and handling for storage card protocols
+- Improved card removal detection with protocol-specific implementations
+- Modernized Gradle build configuration with better artifact naming and publishing
+- Updated target Android SDK to API 34
+- Enhanced example app with storage card transaction demonstrations
+### Technical
+- Refactored build system to remove dependency on `keyple-gradle` plugin
+- Improved CI/CD pipeline with GitHub Actions
+- Enhanced documentation generation with Dokka 2.0.0
 ### Upgraded
-- Dokka to `2.0.0`
+- Updated Keyple dependencies:
+  - `keyple-common-java-api`: `2.0.1` -> `2.0.2`
+  - `keyple-plugin-java-api`: `2.3.1` -> `2.3.2`
 
 ## [3.0.0] - 2025-02-20
 :warning: Major version!
@@ -89,7 +108,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2020-12-18
 This is the initial release.
 
-[unreleased]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.0.0...HEAD
+[unreleased]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.1.0...HEAD
+[3.1.0]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.0.0...3.1.0
 [3.0.0]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.4...3.0.0
 [2.1.4]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.3...2.1.4
 [2.1.3]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/2.1.2...2.1.3
