@@ -23,7 +23,7 @@ object BluebirdConstants {
    *
    * @since 3.0.0
    */
-  const val PLUGIN_NAME = "BluebirdPlugin"
+  const val PLUGIN_NAME = "BluebirdPluginMock"
 
   /**
    * The card reader name as provided by the plugin.
