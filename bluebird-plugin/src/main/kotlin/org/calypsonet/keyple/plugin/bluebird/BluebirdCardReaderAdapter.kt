@@ -298,7 +298,11 @@ internal class BluebirdCardReaderAdapter(
       return
     }
     val filter = IntentFilter().apply { addAction(ExtNfcReader.Broadcast.EXTNFC_DETECTED_ACTION) }
-    activity.registerReceiver(this, filter)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      activity.registerReceiver(this, filter, Context.RECEIVER_EXPORTED)
+    } else {
+      @Suppress("DEPRECATION") activity.registerReceiver(this, filter)
+    }
     isBroadcastReceiverRegistered = true
   }
 
