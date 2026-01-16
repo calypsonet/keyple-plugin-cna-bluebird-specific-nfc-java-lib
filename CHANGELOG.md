@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-01-XX
+### Added
+- Added `MIFARE_CLASSIC` protocol support for NXP Mifare Classic cards
+- Added `loadKey()` method for session-based authentication key management
+- Added `generalAuthenticate()` method for Mifare Classic sector authentication
+- Added `KeyProvider` SPI interface for dynamic key provisioning
+- Added `keyProvider` optional parameter to `BluebirdPluginFactoryProvider.provideFactory()` method
+- Added support for both KEY_A (0x60) and KEY_B (0x61) authentication types
+### Upgraded
+- Updated `keyple-plugin-storagecard-java-api`: `1.0.0` -> `1.1.0`
+### Technical
+- Implemented volatile (session-based) key storage with automatic cleanup on channel open
+- Added Mifare Classic read/write operations with sector-based authentication
+- Enhanced card removal detection for Mifare Classic cards
+- Synchronized mock plugin with main plugin API changes
+### Note
+- Mifare Classic support requires authentication before read/write operations
+- Keys can be provided via `loadKey()` method or `KeyProvider` interface
+- Only volatile key storage is supported (session-based, memory-only)
+
 ## [3.1.2] - 2025-09-08
 ### Fixed
 - Update broadcast receiver registration for Android T+ compatibility.
@@ -117,6 +137,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This is the initial release.
 
 [unreleased]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.1.2...HEAD
+[3.2.0]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.1.2...3.2.0
 [3.1.2]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.1.1...3.1.2
 [3.1.1]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.1.0...3.1.1
 [3.1.0]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.0.0...3.1.0

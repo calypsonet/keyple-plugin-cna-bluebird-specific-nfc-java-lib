@@ -22,6 +22,7 @@ import com.bluebird.extnfc.ExtNfcReader
 import com.bluebird.extnfc.ExtNfcReader.ResultCode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import org.calypsonet.keyple.plugin.bluebird.spi.KeyProvider
 import org.eclipse.keyple.core.plugin.CardIOException
 import org.eclipse.keyple.core.plugin.CardInsertionWaiterAsynchronousApi
 import org.eclipse.keyple.core.plugin.spi.reader.ConfigurableReaderSpi
@@ -30,6 +31,7 @@ import org.eclipse.keyple.core.plugin.spi.reader.observable.state.insertion.Card
 import org.eclipse.keyple.core.plugin.spi.reader.observable.state.removal.CardRemovalWaiterBlockingSpi
 import org.eclipse.keyple.core.plugin.storagecard.ApduInterpreterFactory
 import org.eclipse.keyple.core.plugin.storagecard.internal.CommandProcessorApi
+import org.eclipse.keyple.core.plugin.storagecard.internal.KeyStorageType
 import org.eclipse.keyple.core.plugin.storagecard.internal.spi.ApduInterpreterFactorySpi
 import org.eclipse.keyple.core.plugin.storagecard.internal.spi.ApduInterpreterSpi
 import org.eclipse.keyple.core.util.Assert
@@ -39,7 +41,8 @@ import timber.log.Timber
 
 internal class BluebirdCardReaderAdapter(
     private val activity: Activity,
-    private val apduInterpreterFactory: ApduInterpreterFactory?
+    private val apduInterpreterFactory: ApduInterpreterFactory?,
+    private val keyProvider: KeyProvider?
 ) :
     BluebirdCardReader,
     ObservableReaderSpi,
@@ -52,6 +55,8 @@ internal class BluebirdCardReaderAdapter(
   private companion object {
     private const val MIN_SDK_API_LEVEL_ECP = 28
     private const val PING_APDU = "00C0000000"
+    private const val MIFARE_KEY_A: Byte = 0x60
+    private const val MIFARE_KEY_B: Byte = 0x61
   }
 
   @SuppressLint("WrongConstant")
@@ -71,6 +76,8 @@ internal class BluebirdCardReaderAdapter(
 
   private lateinit var waitForCardInsertionAutonomousApi: CardInsertionWaiterAsynchronousApi
   private lateinit var uid: ByteArray
+
+  private var loadedKey: ByteArray? = null
 
   private val apduInterpreter: ApduInterpreterSpi?
 
@@ -136,6 +143,7 @@ internal class BluebirdCardReaderAdapter(
             .toString()
     Timber.d("Power on data: $powerOnData")
     isCardChannelOpen = true
+    loadedKey = null // Clear any previously loaded key
   }
 
   private fun getTypeFromProtocol(protocol: BluebirdContactlessProtocols): String {
@@ -147,6 +155,7 @@ internal class BluebirdCardReaderAdapter(
       BluebirdContactlessProtocols.INNOVATRON_B_PRIME -> "INNOVATRON-B-PRIME"
       BluebirdContactlessProtocols.ST25_SRT512 -> "ISO14443-3-B"
       BluebirdContactlessProtocols.MIFARE_ULTRALIGHT -> "ISO14443-3-A"
+      BluebirdContactlessProtocols.MIFARE_CLASSIC -> "ISO14443-3-A"
     }
   }
 
@@ -215,6 +224,9 @@ internal class BluebirdCardReaderAdapter(
       BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name ->
           pollingProtocols =
               pollingProtocols or BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.getValue()
+      BluebirdContactlessProtocols.MIFARE_CLASSIC.name ->
+          pollingProtocols =
+              pollingProtocols or BluebirdContactlessProtocols.MIFARE_CLASSIC.getValue()
       BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP.name -> {
         checkEcpAvailability()
         check(vasupMode != ExtNfcReader.ECP.Mode.VASUP_B) { "SKY ECP VASUP type B is set" }
@@ -253,6 +265,9 @@ internal class BluebirdCardReaderAdapter(
       BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name ->
           pollingProtocols =
               pollingProtocols and BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.getValue().inv()
+      BluebirdContactlessProtocols.MIFARE_CLASSIC.name ->
+          pollingProtocols =
+              pollingProtocols and BluebirdContactlessProtocols.MIFARE_CLASSIC.getValue().inv()
       BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP.name,
       BluebirdContactlessProtocols.ISO_14443_4_B_SKY_ECP.name -> {
         checkEcpAvailability()
@@ -361,7 +376,8 @@ internal class BluebirdCardReaderAdapter(
       while (isWaitingForCardRemoval) {
         var isCardRemoved: Boolean
         when (currentProtocol) {
-          BluebirdContactlessProtocols.MIFARE_ULTRALIGHT -> {
+          BluebirdContactlessProtocols.MIFARE_ULTRALIGHT,
+          BluebirdContactlessProtocols.MIFARE_CLASSIC -> {
             val response = nfcReader.BBextNfcMifareRead(0)
             isCardRemoved = response == null || response.size == 1
           }
@@ -460,6 +476,21 @@ internal class BluebirdCardReaderAdapter(
           throw CardIOException("Read block error: invalid response format")
         }
       }
+      BluebirdContactlessProtocols.MIFARE_CLASSIC -> {
+        val response =
+            nfcReader.BBextNfcMifareRead(blockNumber.toByte())
+                ?: throw CardIOException("Read block error: BBextNfcMifareRead returned null")
+        if (response.size == 17) {
+          if (response[0] == 0.toByte()) {
+            return response.copyOfRange(1, 17)
+          } else {
+            throw CardIOException(
+                "Read block error: operation failed with result code ${response[0]}")
+          }
+        } else {
+          throw CardIOException("Read block error: invalid response format")
+        }
+      }
       BluebirdContactlessProtocols.ST25_SRT512 -> {
         val response =
             nfcReader.BBextNfcSRT512ReadBlock(blockNumber.toByte())
@@ -489,6 +520,12 @@ internal class BluebirdCardReaderAdapter(
           throw CardIOException("Write block error: operation failed with result code $resultCode")
         }
       }
+      BluebirdContactlessProtocols.MIFARE_CLASSIC -> {
+        val resultCode = nfcReader.BBextNfcMifareWrite(blockNumber.toByte(), data)
+        if (resultCode != 0) {
+          throw CardIOException("Write block error: operation failed with result code $resultCode")
+        }
+      }
       BluebirdContactlessProtocols.ST25_SRT512 -> {
         val resultCode = nfcReader.BBextNfcSRT512WriteBlock(blockNumber.toByte(), data)
         if (resultCode != 0) {
@@ -499,5 +536,53 @@ internal class BluebirdCardReaderAdapter(
         throw CardIOException("Write block error: protocol not supported: $currentProtocol")
       }
     }
+  }
+
+  override fun loadKey(keyStorageType: KeyStorageType, keyNumber: Int, key: ByteArray) {
+    // Only volatile (session-based) storage is supported
+    // Keys are stored in memory and cleared when channel opens or after authentication
+    loadedKey = key.copyOf()
+  }
+
+  override fun generalAuthenticate(blockAddress: Int, keyType: Int, keyNumber: Int): Boolean {
+    // Only Mifare Classic requires authentication
+    if (currentProtocol != BluebirdContactlessProtocols.MIFARE_CLASSIC) {
+      throw CardIOException(
+          "General Authenticate is only supported for Mifare Classic. Current protocol: $currentProtocol")
+    }
+
+    // Retrieve the key: first check loaded key, then fall back to KeyProvider
+    val key = loadedKey
+    loadedKey = null // Consume the loaded key (single-use)
+
+    val usedKey =
+        key
+            ?: checkNotNull(keyProvider) {
+                  "No key loaded and no key provider available for key number: $keyNumber"
+                }
+                .getKey(keyNumber)
+            ?: throw IllegalStateException("No key found for key number: $keyNumber")
+
+    // Validate key length (Mifare Classic uses 6-byte keys)
+    require(usedKey.size == 6) {
+      "Invalid key length: ${usedKey.size} bytes. Mifare Classic requires 6-byte keys."
+    }
+
+    // Convert keyType to Bluebird API format
+    val bluebirdKeyType =
+        when (keyType) {
+          MIFARE_KEY_A.toInt() -> 0x00.toByte() // Bluebird uses 0x00 for KEY_A
+          MIFARE_KEY_B.toInt() -> 0x01.toByte() // Bluebird uses 0x01 for KEY_B
+          else ->
+              throw IllegalArgumentException(
+                  "Unsupported key type: 0x${keyType.toString(16)}. Only KEY_A (0x60) and KEY_B (0x61) are supported.")
+        }
+
+    // Perform authentication using Bluebird NFC API
+    val resultCode =
+        nfcReader.BBextNfciMifareAuthentication(bluebirdKeyType, blockAddress.toByte(), usedKey)
+
+    // Return true if authentication succeeded, false otherwise
+    return resultCode == ResultCode.SUCCESS
   }
 }

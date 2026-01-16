@@ -23,7 +23,7 @@ dependencies {
   // 'https://keyple.org/components/overview/configuration-wizard/')
   implementation("org.eclipse.keyple:keyple-common-java-api:2.0.2")
   implementation("org.eclipse.keyple:keyple-plugin-java-api:2.3.2")
-  api("org.eclipse.keyple:keyple-plugin-storagecard-java-api:1.0.0")
+  api("org.eclipse.keyple:keyple-plugin-storagecard-java-api:1.1.0-SNAPSHOT") { isChanging = true }
   implementation("org.eclipse.keyple:keyple-util-java-lib:2.4.0")
   // End Keyple configuration
   // Kotlin

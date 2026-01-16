@@ -12,6 +12,7 @@
 package org.calypsonet.keyple.plugin.bluebird
 
 import android.app.Activity
+import org.calypsonet.keyple.plugin.bluebird.spi.KeyProvider
 import org.eclipse.keyple.core.plugin.spi.PluginSpi
 import org.eclipse.keyple.core.plugin.spi.reader.ReaderSpi
 import org.eclipse.keyple.core.plugin.storagecard.ApduInterpreterFactory
@@ -23,13 +24,16 @@ import org.eclipse.keyple.core.plugin.storagecard.ApduInterpreterFactory
  */
 internal class BluebirdPluginAdapter(
     private val activity: Activity,
-    private val apduInterpreterFactory: ApduInterpreterFactory?
+    private val apduInterpreterFactory: ApduInterpreterFactory?,
+    private val keyProvider: KeyProvider?
 ) : BluebirdPlugin, PluginSpi {
 
   override fun getName(): String = BluebirdConstants.PLUGIN_NAME
 
   override fun searchAvailableReaders(): Set<ReaderSpi> =
-      setOf(BluebirdSamReaderAdapter(), BluebirdCardReaderAdapter(activity, apduInterpreterFactory))
+      setOf(
+          BluebirdSamReaderAdapter(),
+          BluebirdCardReaderAdapter(activity, apduInterpreterFactory, keyProvider))
 
   override fun onUnregister() {
     // Do nothing -> all unregisterBroadcastReceiver operations are handled by readers

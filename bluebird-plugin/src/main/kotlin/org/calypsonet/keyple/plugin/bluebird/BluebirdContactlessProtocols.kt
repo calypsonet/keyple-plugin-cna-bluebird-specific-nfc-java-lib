@@ -68,7 +68,14 @@ enum class BluebirdContactlessProtocols(private val techValue: Int) {
    *
    * @since 3.1.0
    */
-  MIFARE_ULTRALIGHT(0x20);
+  MIFARE_ULTRALIGHT(0x20),
+
+  /**
+   * NXP Mifare Classic.
+   *
+   * @since 3.2.0
+   */
+  MIFARE_CLASSIC(0x10);
 
   internal fun getValue(): Int = techValue
 

@@ -12,6 +12,7 @@
 package org.calypsonet.keyple.plugin.bluebird
 
 import android.app.Activity
+import org.calypsonet.keyple.plugin.bluebird.spi.KeyProvider
 import org.eclipse.keyple.core.common.CommonApiProperties
 import org.eclipse.keyple.core.plugin.PluginApiProperties
 import org.eclipse.keyple.core.plugin.spi.PluginFactorySpi
@@ -26,12 +27,14 @@ import org.eclipse.keyple.core.plugin.storagecard.ApduInterpreterFactory
 internal class BluebirdPluginFactoryAdapter
 internal constructor(
     private val activity: Activity,
-    private val apduInterpreterFactory: ApduInterpreterFactory?
+    private val apduInterpreterFactory: ApduInterpreterFactory?,
+    private val keyProvider: KeyProvider?
 ) : BluebirdPluginFactory, PluginFactorySpi {
 
   override fun getPluginName(): String = BluebirdConstants.PLUGIN_NAME
 
-  override fun getPlugin(): PluginSpi = BluebirdPluginAdapter(activity, apduInterpreterFactory)
+  override fun getPlugin(): PluginSpi =
+      BluebirdPluginAdapter(activity, apduInterpreterFactory, keyProvider)
 
   override fun getCommonApiVersion(): String = CommonApiProperties.VERSION
 

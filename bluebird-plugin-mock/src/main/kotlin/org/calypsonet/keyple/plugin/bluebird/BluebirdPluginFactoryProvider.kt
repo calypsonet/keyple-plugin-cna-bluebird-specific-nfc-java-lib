@@ -12,6 +12,7 @@
 package org.calypsonet.keyple.plugin.bluebird
 
 import android.app.Activity
+import org.calypsonet.keyple.plugin.bluebird.spi.KeyProvider
 import org.eclipse.keyple.core.plugin.storagecard.ApduInterpreterFactory
 
 /**
@@ -28,11 +29,13 @@ object BluebirdPluginFactoryProvider {
    * @param apduInterpreterFactory (Optional) The `ApduInterpreterFactory` dedicated to the
    *   management of storage cards. The interface of this factory is provided by the
    *   `keyple-plugin-storagecard-java-api` API, its implementation should be provided.
-   * @since 3.0.0 (single-param usage), 3.1.0 (with APDU interpreter)
+   * @param keyProvider (Optional) A provider for retrieving keys during authentication.
+   * @since 3.0.0 (single-param usage), 3.1.0 (with APDU interpreter), 3.2.0 (with key provider)
    */
   fun provideFactory(
       activity: Activity,
-      apduInterpreterFactory: ApduInterpreterFactory? = null
+      apduInterpreterFactory: ApduInterpreterFactory? = null,
+      keyProvider: KeyProvider? = null
   ): BluebirdPluginFactory {
     throw UnsupportedOperationException("Mocked plugin!")
   }
