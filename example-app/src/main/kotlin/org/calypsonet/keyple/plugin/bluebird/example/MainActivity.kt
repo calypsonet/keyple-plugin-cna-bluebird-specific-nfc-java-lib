@@ -36,13 +36,11 @@ import org.eclipse.keyple.card.calypso.CalypsoExtensionService
 import org.eclipse.keyple.card.calypso.crypto.legacysam.LegacySamExtensionService
 import org.eclipse.keyple.card.calypso.crypto.legacysam.LegacySamUtil
 import org.eclipse.keyple.core.service.*
-import org.eclipse.keyple.core.util.ByteArrayUtil
 import org.eclipse.keyple.core.util.HexUtil
 import org.eclipse.keypop.calypso.card.WriteAccessLevel.DEBIT
 import org.eclipse.keypop.calypso.card.WriteAccessLevel.LOAD
 import org.eclipse.keypop.calypso.card.WriteAccessLevel.PERSONALIZATION
 import org.eclipse.keypop.calypso.card.card.CalypsoCard
-import org.eclipse.keypop.calypso.card.transaction.ChannelControl.CLOSE_AFTER
 import org.eclipse.keypop.calypso.card.transaction.SecureRegularModeTransactionManager
 import org.eclipse.keypop.calypso.card.transaction.SymmetricCryptoSecuritySetting
 import org.eclipse.keypop.calypso.crypto.legacysam.sam.LegacySam
@@ -52,8 +50,8 @@ import org.eclipse.keypop.reader.ObservableCardReader.NotificationMode.ALWAYS
 import org.eclipse.keypop.reader.selection.CardSelectionManager
 import org.eclipse.keypop.reader.spi.CardReaderObservationExceptionHandlerSpi
 import org.eclipse.keypop.reader.spi.CardReaderObserverSpi
-import org.eclipse.keypop.storagecard.card.ProductType.MIFARE_ULTRALIGHT
-import org.eclipse.keypop.storagecard.card.ProductType.ST25_SRT512
+import org.eclipse.keypop.storagecard.MifareClassicKeyType
+import org.eclipse.keypop.storagecard.card.ProductType
 import org.eclipse.keypop.storagecard.card.StorageCard
 import timber.log.Timber
 
@@ -77,6 +75,7 @@ class MainActivity :
   companion object {
     const val ISO_14443_4_LOGICAL_PROTOCOL = "ISO_14443_4"
     const val MIFARE_ULTRALIGHT_LOGICAL_PROTOCOL = "MIFARE_ULTRALIGHT"
+    const val MIFARE_CLASSIC_1K_LOGICAL_PROTOCOL = "MIFARE_CLASSIC_1K"
     const val ST25_SRT512_LOGICAL_PROTOCOL = "ST25_SRT512"
   }
 
@@ -104,7 +103,9 @@ class MainActivity :
               "\nAcceptable cards:" +
               "\n- Calypso (AID: ${CalypsoConstants.AID})," +
               if (storageCardExtensionService != null) {
-                "\n- MIFARE Ultralight (MFOC, MFOICU1)" + "\n- ST25/SRT512"
+                "\n- MIFARE Ultralight (MFOC, MFOICU1)" +
+                    "\n- MIFARE Classic 1K" +
+                    "\n- ST25/SRT512"
               } else {
                 ""
               })
@@ -212,7 +213,8 @@ class MainActivity :
     val bluebirdPlugin =
         SmartCardServiceProvider.getService()
             .registerPlugin(
-                BluebirdPluginFactoryProvider.provideFactory(this, apduInterpreterFactoryProvider))
+                BluebirdPluginFactoryProvider.provideFactory(
+                    this, apduInterpreterFactoryProvider, MifareClassicKeyProvider()))
 
     // init card reader
     cardReader =
@@ -240,6 +242,9 @@ class MainActivity :
       // Activate MIFARE Ultralight
       activateProtocol(
           BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name, MIFARE_ULTRALIGHT_LOGICAL_PROTOCOL)
+      // Activate MIFARE Classic 1K
+      activateProtocol(
+          BluebirdContactlessProtocols.MIFARE_CLASSIC_1K.name, MIFARE_CLASSIC_1K_LOGICAL_PROTOCOL)
       // Activate ST25/SRT512
       activateProtocol(BluebirdContactlessProtocols.ST25_SRT512.name, ST25_SRT512_LOGICAL_PROTOCOL)
     }
@@ -303,13 +308,24 @@ class MainActivity :
               .readerApiFactory
               .createBasicCardSelector()
               .filterByCardProtocol(MIFARE_ULTRALIGHT_LOGICAL_PROTOCOL),
-          storageCardExtensionService.createStorageCardSelectionExtension(MIFARE_ULTRALIGHT))
+          storageCardExtensionService.storageCardApiFactory.createStorageCardSelectionExtension(
+              ProductType.MIFARE_ULTRALIGHT))
+      cardSelectionManager.prepareSelection(
+          SmartCardServiceProvider.getService()
+              .readerApiFactory
+              .createBasicCardSelector()
+              .filterByCardProtocol(MIFARE_CLASSIC_1K_LOGICAL_PROTOCOL),
+          storageCardExtensionService.storageCardApiFactory
+              .createStorageCardSelectionExtension(ProductType.MIFARE_CLASSIC_1K)
+              .prepareMifareClassicAuthenticate(0, MifareClassicKeyType.KEY_A, 0)
+              .prepareReadBlocks(0, 0))
       cardSelectionManager.prepareSelection(
           SmartCardServiceProvider.getService()
               .readerApiFactory
               .createBasicCardSelector()
               .filterByCardProtocol(ST25_SRT512_LOGICAL_PROTOCOL),
-          storageCardExtensionService.createStorageCardSelectionExtension(ST25_SRT512))
+          storageCardExtensionService.storageCardApiFactory.createStorageCardSelectionExtension(
+              ProductType.ST25_SRT512))
     }
     cardSelectionManager.scheduleCardSelectionScenario(cardReader, ALWAYS)
     Timber.i("Card selection prepared")
@@ -384,7 +400,7 @@ class MainActivity :
               CalypsoConstants.RECORD_NUMBER_1,
               CalypsoConstants.RECORD_SIZE)
           .prepareCloseSecureSession()
-          .processCommands(CLOSE_AFTER)
+          .processCommands(ChannelControl.CLOSE_AFTER)
     }
 
     val efEnvironmentHolder =
@@ -402,6 +418,7 @@ class MainActivity :
   }
 
   private fun handleStorageCard(storageCard: StorageCard) {
+
     addMessage(
         MessageType.RESULT,
         "${storageCard.productType.name} UID:" +
@@ -410,32 +427,66 @@ class MainActivity :
             "\n${storageCard.powerOnData}")
 
     val transactionManager =
-        storageCardExtensionService.createStorageCardTransactionManager(cardReader, storageCard)
+        storageCardExtensionService.storageCardApiFactory.createStorageCardTransactionManager(
+            cardReader, storageCard)
 
     addMessage(MessageType.ACTION, "Starting reading transaction...")
 
     val duration = measureTimeMillis {
+      if (storageCard.productType.hasAuthentication()) {
+
+        transactionManager.prepareMifareClassicAuthenticate(4, MifareClassicKeyType.KEY_A, 0)
+      }
+
+      var startBlock = 0
+
+      var endBlock = storageCard.productType.blockCount - 1
+
+      if (storageCard.productType == ProductType.MIFARE_CLASSIC_1K) {
+
+        startBlock = 4
+
+        // IMPORTANT: Stop at 6. Block 7 is the Sector Trailer (Keys + Access Bits).
+
+        // Writing to block 7 without careful calculation will brick the sector.
+
+        endBlock = 6
+      }
+
       transactionManager
-          .prepareReadBlocks(0, storageCard.productType.blockCount - 1)
-          .processCommands(org.eclipse.keypop.storagecard.transaction.ChannelControl.KEEP_OPEN)
-      val incrementedLastBlockVal =
-          ByteArrayUtil.extractInt(
-              storageCard.getBlock(storageCard.productType.blockCount - 1), 0, 4, false) + 1
-      val newLastBlock =
-          byteArrayOf(
-              (incrementedLastBlockVal shr 24).toByte(),
-              (incrementedLastBlockVal shr 16).toByte(),
-              (incrementedLastBlockVal shr 8).toByte(),
-              incrementedLastBlockVal.toByte())
+          .prepareReadBlocks(startBlock, endBlock)
+          .processCommands(ChannelControl.KEEP_OPEN)
+
+      val lastBlock = storageCard.getBlock(endBlock)
+
+      val newLastBlock = lastBlock.copyOf()
+
+      // Increment each byte in the block (generic approach from PC/SC example)
+
+      for (i in newLastBlock.indices.reversed()) {
+
+        newLastBlock[i] = (newLastBlock[i] + 1).toByte()
+      }
+
       transactionManager
-          .prepareWriteBlocks(storageCard.productType.blockCount - 1, newLastBlock)
-          .processCommands(org.eclipse.keypop.storagecard.transaction.ChannelControl.CLOSE_AFTER)
+          .prepareWriteBlocks(endBlock, newLastBlock)
+          .processCommands(ChannelControl.CLOSE_AFTER)
     }
 
     val blocksContent =
-        (0 until storageCard.productType.blockCount).joinToString(separator = "\n") { blockNumber ->
-          "Block $blockNumber = ${HexUtil.toHex(storageCard.getBlock(blockNumber))}"
-        }
+        (0 until storageCard.productType.blockCount)
+            .joinToString(separator = "\n") { blockNumber ->
+              val data = storageCard.getBlock(blockNumber)
+
+              if (data != null && data.isNotEmpty()) {
+
+                "Block $blockNumber = ${HexUtil.toHex(data)}"
+              } else {
+
+                ""
+              }
+            }
+            .trim()
 
     addMessage(MessageType.RESULT, "Blocks content:\n$blocksContent")
 
@@ -458,7 +509,7 @@ class MainActivity :
             "\nAcceptable cards:" +
             "\n- Calypso (AID: ${CalypsoConstants.AID})," +
             if (storageCardExtensionService != null) {
-              "\n- MIFARE Ultralight (MFOC, MFOICU1)" + "\n- ST25/SRT512"
+              "\n- MIFARE Ultralight (MFOC, MFOICU1)" + "\n- MIFARE Classic 1K" + "\n- ST25/SRT512"
             } else {
               ""
             })

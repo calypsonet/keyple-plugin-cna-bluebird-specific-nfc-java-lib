@@ -155,7 +155,7 @@ internal class BluebirdCardReaderAdapter(
       BluebirdContactlessProtocols.INNOVATRON_B_PRIME -> "INNOVATRON-B-PRIME"
       BluebirdContactlessProtocols.ST25_SRT512 -> "ISO14443-3-B"
       BluebirdContactlessProtocols.MIFARE_ULTRALIGHT -> "ISO14443-3-A"
-      BluebirdContactlessProtocols.MIFARE_CLASSIC -> "ISO14443-3-A"
+      BluebirdContactlessProtocols.MIFARE_CLASSIC_1K -> "ISO14443-3-A"
     }
   }
 
@@ -224,9 +224,9 @@ internal class BluebirdCardReaderAdapter(
       BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name ->
           pollingProtocols =
               pollingProtocols or BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.getValue()
-      BluebirdContactlessProtocols.MIFARE_CLASSIC.name ->
+      BluebirdContactlessProtocols.MIFARE_CLASSIC_1K.name ->
           pollingProtocols =
-              pollingProtocols or BluebirdContactlessProtocols.MIFARE_CLASSIC.getValue()
+              pollingProtocols or BluebirdContactlessProtocols.MIFARE_CLASSIC_1K.getValue()
       BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP.name -> {
         checkEcpAvailability()
         check(vasupMode != ExtNfcReader.ECP.Mode.VASUP_B) { "SKY ECP VASUP type B is set" }
@@ -265,9 +265,9 @@ internal class BluebirdCardReaderAdapter(
       BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name ->
           pollingProtocols =
               pollingProtocols and BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.getValue().inv()
-      BluebirdContactlessProtocols.MIFARE_CLASSIC.name ->
+      BluebirdContactlessProtocols.MIFARE_CLASSIC_1K.name ->
           pollingProtocols =
-              pollingProtocols and BluebirdContactlessProtocols.MIFARE_CLASSIC.getValue().inv()
+              pollingProtocols and BluebirdContactlessProtocols.MIFARE_CLASSIC_1K.getValue().inv()
       BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP.name,
       BluebirdContactlessProtocols.ISO_14443_4_B_SKY_ECP.name -> {
         checkEcpAvailability()
@@ -377,7 +377,7 @@ internal class BluebirdCardReaderAdapter(
         var isCardRemoved: Boolean
         when (currentProtocol) {
           BluebirdContactlessProtocols.MIFARE_ULTRALIGHT,
-          BluebirdContactlessProtocols.MIFARE_CLASSIC -> {
+          BluebirdContactlessProtocols.MIFARE_CLASSIC_1K -> {
             val response = nfcReader.BBextNfcMifareRead(0)
             isCardRemoved = response == null || response.size == 1
           }
@@ -476,7 +476,7 @@ internal class BluebirdCardReaderAdapter(
           throw CardIOException("Read block error: invalid response format")
         }
       }
-      BluebirdContactlessProtocols.MIFARE_CLASSIC -> {
+      BluebirdContactlessProtocols.MIFARE_CLASSIC_1K -> {
         val response =
             nfcReader.BBextNfcMifareRead(blockNumber.toByte())
                 ?: throw CardIOException("Read block error: BBextNfcMifareRead returned null")
@@ -520,7 +520,7 @@ internal class BluebirdCardReaderAdapter(
           throw CardIOException("Write block error: operation failed with result code $resultCode")
         }
       }
-      BluebirdContactlessProtocols.MIFARE_CLASSIC -> {
+      BluebirdContactlessProtocols.MIFARE_CLASSIC_1K -> {
         val resultCode = nfcReader.BBextNfcMifareWrite(blockNumber.toByte(), data)
         if (resultCode != 0) {
           throw CardIOException("Write block error: operation failed with result code $resultCode")
@@ -546,7 +546,7 @@ internal class BluebirdCardReaderAdapter(
 
   override fun generalAuthenticate(blockAddress: Int, keyType: Int, keyNumber: Int): Boolean {
     // Only Mifare Classic requires authentication
-    if (currentProtocol != BluebirdContactlessProtocols.MIFARE_CLASSIC) {
+    if (currentProtocol != BluebirdContactlessProtocols.MIFARE_CLASSIC_1K) {
       throw CardIOException(
           "General Authenticate is only supported for Mifare Classic. Current protocol: $currentProtocol")
     }
