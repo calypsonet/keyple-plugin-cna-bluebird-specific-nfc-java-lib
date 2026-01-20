@@ -418,7 +418,6 @@ class MainActivity :
   }
 
   private fun handleStorageCard(storageCard: StorageCard) {
-
     addMessage(
         MessageType.RESULT,
         "${storageCard.productType.name} UID:" +
@@ -434,22 +433,16 @@ class MainActivity :
 
     val duration = measureTimeMillis {
       if (storageCard.productType.hasAuthentication()) {
-
         transactionManager.prepareMifareClassicAuthenticate(4, MifareClassicKeyType.KEY_A, 0)
       }
 
       var startBlock = 0
-
       var endBlock = storageCard.productType.blockCount - 1
 
       if (storageCard.productType == ProductType.MIFARE_CLASSIC_1K) {
-
         startBlock = 4
-
         // IMPORTANT: Stop at 6. Block 7 is the Sector Trailer (Keys + Access Bits).
-
         // Writing to block 7 without careful calculation will brick the sector.
-
         endBlock = 6
       }
 
@@ -458,13 +451,10 @@ class MainActivity :
           .processCommands(ChannelControl.KEEP_OPEN)
 
       val lastBlock = storageCard.getBlock(endBlock)
-
       val newLastBlock = lastBlock.copyOf()
 
       // Increment each byte in the block (generic approach from PC/SC example)
-
       for (i in newLastBlock.indices.reversed()) {
-
         newLastBlock[i] = (newLastBlock[i] + 1).toByte()
       }
 
@@ -477,19 +467,15 @@ class MainActivity :
         (0 until storageCard.productType.blockCount)
             .joinToString(separator = "\n") { blockNumber ->
               val data = storageCard.getBlock(blockNumber)
-
               if (data != null && data.isNotEmpty()) {
-
                 "Block $blockNumber = ${HexUtil.toHex(data)}"
               } else {
-
                 ""
               }
             }
             .trim()
 
     addMessage(MessageType.RESULT, "Blocks content:\n$blocksContent")
-
     addMessage(MessageType.ACTION, "Transaction duration: $duration ms")
   }
 
@@ -509,7 +495,9 @@ class MainActivity :
             "\nAcceptable cards:" +
             "\n- Calypso (AID: ${CalypsoConstants.AID})," +
             if (storageCardExtensionService != null) {
-              "\n- MIFARE Ultralight (MFOC, MFOICU1)" + "\n- MIFARE Classic 1K" + "\n- ST25/SRT512"
+              "\n- MIFARE Ultralight (MFOC, MFOICU1)" +
+                  "\n- MIFARE Classic 1K" +
+                  "\n- ST25/SRT512"
             } else {
               ""
             })
