@@ -97,6 +97,7 @@ class MainActivity :
     super.onResume()
     if (isInitializationFinalized) {
       cardReader.startCardDetection(REPEATING)
+      addMessage(MessageType.ACTION, getWaitingForCardPresentationMessage())
     }
   }
 
@@ -136,6 +137,17 @@ class MainActivity :
       binding.messageRecyclerView.smoothScrollToPosition(messages.size - 1)
     }
     Timber.d("${type.name}: %s", message)
+  }
+
+  private fun getWaitingForCardPresentationMessage(): String {
+    return "Waiting for card presentation...\n" +
+        "\nAcceptable cards:" +
+        "\n- Calypso (AID: ${CalypsoConstants.AID})," +
+        if (storageCardExtensionService != null) {
+          "\n- MIFARE Ultralight (MFOC, MFOICU1)" + "\n- MIFARE Classic 1K" + "\n- ST25/SRT512"
+        } else {
+          ""
+        }
   }
 
   private fun showAlertDialogWithAction(
@@ -473,15 +485,6 @@ class MainActivity :
 
   private fun handleCardRemovedEvent() {
     addMessage(MessageType.EVENT, "Card removed")
-    addMessage(
-        MessageType.ACTION,
-        "Waiting for card presentation...\n" +
-            "\nAcceptable cards:" +
-            "\n- Calypso (AID: ${CalypsoConstants.AID})," +
-            if (storageCardExtensionService != null) {
-              "\n- MIFARE Ultralight (MFOC, MFOICU1)" + "\n- MIFARE Classic 1K" + "\n- ST25/SRT512"
-            } else {
-              ""
-            })
+    addMessage(MessageType.ACTION, getWaitingForCardPresentationMessage())
   }
 }

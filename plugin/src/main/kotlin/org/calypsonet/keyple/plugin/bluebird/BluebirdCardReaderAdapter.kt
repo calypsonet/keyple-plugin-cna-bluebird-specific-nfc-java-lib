@@ -78,18 +78,16 @@ internal class BluebirdCardReaderAdapter(
   private lateinit var uid: ByteArray
 
   private var loadedKey: ByteArray? = null
-  private var lastAccessedMifareBlock: Int? = null
 
-  private val apduInterpreter: ApduInterpreterSpi?
+  private val apduInterpreter: ApduInterpreterSpi? =
+      apduInterpreterFactory?.let {
+        require(it is ApduInterpreterFactorySpi) {
+          "The provided ApduInterpreterFactory is not an instance of ApduInterpreterFactorySpi"
+        }
+        it.createApduInterpreter()
+      }
 
   init {
-    apduInterpreter =
-        apduInterpreterFactory?.let {
-          require(it is ApduInterpreterFactorySpi) {
-            "The provided ApduInterpreterFactory is not an instance of ApduInterpreterFactorySpi"
-          }
-          it.createApduInterpreter()
-        }
     apduInterpreter?.setCommandProcessor(this)
   }
 
@@ -145,7 +143,6 @@ internal class BluebirdCardReaderAdapter(
     Timber.d("Power on data: $powerOnData")
     isCardChannelOpen = true
     loadedKey = null // Clear any previously loaded key
-    lastAccessedMifareBlock = null // Clear any previously accessed Mifare block
   }
 
   private fun getTypeFromProtocol(protocol: BluebirdContactlessProtocols): String {
@@ -376,44 +373,27 @@ internal class BluebirdCardReaderAdapter(
     isWaitingForCardRemoval = true
     try {
       while (isWaitingForCardRemoval) {
-        var isCardRemoved: Boolean
-        when (currentProtocol) {
-          BluebirdContactlessProtocols.MIFARE_ULTRALIGHT -> {
-            val response = nfcReader.BBextNfcMifareRead(0)
-            isCardRemoved = response == null || response.size == 1
-          }
-          BluebirdContactlessProtocols.MIFARE_CLASSIC_1K -> {
-            // Use the last accessed block to avoid re-authentication
-            val blockToRead = lastAccessedMifareBlock?.toByte() ?: 0
-            val response = nfcReader.BBextNfcMifareRead(blockToRead)
-            isCardRemoved = response == null || response.size == 1
-          }
-          BluebirdContactlessProtocols.ST25_SRT512 -> {
-            val response = nfcReader.BBextNfcSRT512ReadBlock(0)
-            if (response == null || response.size == 1) {
-              nfcReader.BBextNfcSRT512Completion()
-              isCardRemoved = true
-            } else {
-              isCardRemoved = false
-            }
-          }
-          else -> {
-            try {
-              transmitApdu(HexUtil.toByteArray(PING_APDU))
-              isCardRemoved = false
-            } catch (_: Exception) {
-              isCardRemoved = true
-            }
-          }
+        // Disconnect from the card
+        nfcReader.disconnect()
+        // Wait for isConnected to become false
+        while (nfcReader.isConnected) {
+          runBlocking { delay(10) }
         }
-        if (isCardRemoved) {
+        // Try to reconnect
+        val status = nfcReader.connect()
+        // If reconnection fails, the card has been removed
+        if (status < 0) {
+          Timber.d("Card removed: reconnection failed with status $status")
           isWaitingForCardRemoval = false
           break
         }
-        runBlocking { delay(100) }
+        // If reconnection succeeds, the card is still present
+        Timber.d("Card still present: reconnection succeeded")
       }
     } finally {
-      nfcReader.disconnect()
+      if (nfcReader.isConnected) {
+        nfcReader.disconnect()
+      }
       isWaitingForCardRemoval = false
     }
   }
@@ -489,7 +469,6 @@ internal class BluebirdCardReaderAdapter(
                 ?: throw CardIOException("Read block error: BBextNfcMifareRead returned null")
         if (response.size == 17) {
           if (response[0] == 0.toByte()) {
-            lastAccessedMifareBlock = blockNumber
             return response.copyOfRange(1, 17)
           } else {
             throw CardIOException(
@@ -533,7 +512,6 @@ internal class BluebirdCardReaderAdapter(
         if (resultCode != 0) {
           throw CardIOException("Write block error: operation failed with result code $resultCode")
         }
-        lastAccessedMifareBlock = blockNumber
       }
       BluebirdContactlessProtocols.ST25_SRT512 -> {
         val resultCode = nfcReader.BBextNfcSRT512WriteBlock(blockNumber.toByte(), data)
