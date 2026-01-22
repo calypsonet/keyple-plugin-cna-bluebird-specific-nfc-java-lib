@@ -18,7 +18,7 @@ plugins {
 
 dependencies {
   // Bluebird Keyple plugin
-  implementation(project(path = ":bluebird-plugin"))
+  implementation(project(path = ":plugin"))
   // Bluebird specific components
   implementation(
       fileTree(

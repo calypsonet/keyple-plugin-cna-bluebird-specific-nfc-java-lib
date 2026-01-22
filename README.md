@@ -37,8 +37,8 @@ If you don't have access to these libraries or don't need storage card support, 
 
 This repository contains three main modules:
 
-- **bluebird-plugin-mock**: Public mock plugin with API interfaces only (no proprietary dependencies)
-- **bluebird-plugin**: Full implementation plugin requiring Bluebird proprietary libraries
+- **plugin-mock**: Public mock plugin with API interfaces only (no proprietary dependencies)
+- **plugin**: Full implementation plugin requiring Bluebird proprietary libraries
 - **example-app**: Reference application demonstrating the plugin usage
 
 ## Building the Plugin
@@ -48,12 +48,12 @@ This repository contains three main modules:
 The mock plugin can be built without any proprietary libraries:
 
 ```bash
-./gradlew bluebird-plugin-mock:build
+./gradlew plugin-mock:build
 ```
 
 The resulting AAR will be available in:
 ```
-bluebird-plugin-mock/build/outputs/aar/keyple-plugin-cna-bluebird-specific-nfc-java-lib-<version>-release-mock.aar
+plugin-mock/build/outputs/aar/keyple-plugin-cna-bluebird-specific-nfc-java-lib-<version>-release-mock.aar
 ```
 
 ### Full Implementation Plugin (Requires Bluebird Libraries)
@@ -71,26 +71,26 @@ These libraries are **not included** in this repository due to licensing restric
 #### Setup Instructions
 
 1. Obtain the required Bluebird libraries from Bluebird or your authorized distributor
-2. Create the `libs` directory in the `bluebird-plugin` module:
+2. Create the `libs` directory in the `plugin` module:
    ```bash
-   mkdir -p bluebird-plugin/libs
+   mkdir -p plugin/libs
    ```
 3. Copy the Bluebird JAR files into this directory:
    ```bash
-   cp /path/to/bluebird-extnfc.jar bluebird-plugin/libs/
-   cp /path/to/sam_ng_201710.jar bluebird-plugin/libs/
+   cp /path/to/bluebird-extnfc.jar plugin/libs/
+   cp /path/to/sam_ng_201710.jar plugin/libs/
    ```
 4. Build the plugin:
    ```bash
-   ./gradlew bluebird-plugin:build
+   ./gradlew plugin:build
    ```
 
 The resulting AAR will be available in:
 ```
-bluebird-plugin/build/outputs/aar/keyple-plugin-cna-bluebird-specific-nfc-java-lib-<version>-release.aar
+plugin/build/outputs/aar/keyple-plugin-cna-bluebird-specific-nfc-java-lib-<version>-release.aar
 ```
 
-**Note**: The `bluebird-plugin/libs/` directory is excluded from version control (`.gitignore`) to prevent accidental distribution of proprietary code.
+**Note**: The `plugin/libs/` directory is excluded from version control (`.gitignore`) to prevent accidental distribution of proprietary code.
 
 ## Building the Example Application
 

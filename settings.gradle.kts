@@ -1,6 +1,6 @@
 rootProject.name = "keyple-plugin-cna-bluebird-specific-nfc-java-lib"
-include(":bluebird-plugin")
-include(":bluebird-plugin-mock")
+include(":plugin")
+include(":plugin-mock")
 include(":example-app")
 
 pluginManagement {

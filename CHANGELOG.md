@@ -107,7 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.1.1] - 2023-01-10
 ### Added
-- `bluebird-plugin-mock` module containing an empty mock of the plugin.
+- `plugin-mock` module containing an empty mock of the plugin.
 ### Fixed
 - The identification of the protocol currently used to communicate with a card.
 ### Removed

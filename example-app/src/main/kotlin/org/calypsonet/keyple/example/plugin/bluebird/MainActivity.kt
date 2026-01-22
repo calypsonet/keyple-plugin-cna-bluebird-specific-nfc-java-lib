@@ -27,10 +27,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.calypsonet.keyple.card.storagecard.StorageCardExtensionService
-import org.calypsonet.keyple.plugin.bluebird.*
 import org.calypsonet.keyple.example.plugin.bluebird.MessageDisplayAdapter.Message
 import org.calypsonet.keyple.example.plugin.bluebird.MessageDisplayAdapter.MessageType
 import org.calypsonet.keyple.example.plugin.bluebird.databinding.ActivityMainBinding
+import org.calypsonet.keyple.plugin.bluebird.*
 import org.calypsonet.keyple.plugin.storagecard.ApduInterpreterFactoryProvider
 import org.eclipse.keyple.card.calypso.CalypsoExtensionService
 import org.eclipse.keyple.card.calypso.crypto.legacysam.LegacySamExtensionService
@@ -108,9 +108,9 @@ class MainActivity :
   }
 
   override fun onDestroy() {
-      SmartCardServiceProvider.getService()?.plugins?.forEach {
-        SmartCardServiceProvider.getService()?.unregisterPlugin(it.name)
-      }
+    SmartCardServiceProvider.getService()?.plugins?.forEach {
+      SmartCardServiceProvider.getService()?.unregisterPlugin(it.name)
+    }
     super.onDestroy()
   }
 
@@ -479,9 +479,7 @@ class MainActivity :
             "\nAcceptable cards:" +
             "\n- Calypso (AID: ${CalypsoConstants.AID})," +
             if (storageCardExtensionService != null) {
-              "\n- MIFARE Ultralight (MFOC, MFOICU1)" +
-                  "\n- MIFARE Classic 1K" +
-                  "\n- ST25/SRT512"
+              "\n- MIFARE Ultralight (MFOC, MFOICU1)" + "\n- MIFARE Classic 1K" + "\n- ST25/SRT512"
             } else {
               ""
             })

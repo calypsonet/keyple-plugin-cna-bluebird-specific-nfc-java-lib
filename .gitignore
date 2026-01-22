@@ -2,7 +2,7 @@
 *.class
 
 # Private libs
-bluebird-plugin/libs/
+plugin/libs/
 
 # Generated files
 gen/
