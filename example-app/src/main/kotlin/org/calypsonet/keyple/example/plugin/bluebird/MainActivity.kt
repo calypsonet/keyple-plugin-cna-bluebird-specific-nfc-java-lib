@@ -11,7 +11,7 @@
  ************************************************************************************** */
 @file:Suppress("UNNECESSARY_SAFE_CALL")
 
-package org.calypsonet.keyple.plugin.bluebird.example
+package org.calypsonet.keyple.example.plugin.bluebird
 
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -28,9 +28,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.calypsonet.keyple.card.storagecard.StorageCardExtensionService
 import org.calypsonet.keyple.plugin.bluebird.*
-import org.calypsonet.keyple.plugin.bluebird.example.MessageDisplayAdapter.Message
-import org.calypsonet.keyple.plugin.bluebird.example.MessageDisplayAdapter.MessageType
-import org.calypsonet.keyple.plugin.bluebird.example.databinding.ActivityMainBinding
+import org.calypsonet.keyple.example.plugin.bluebird.MessageDisplayAdapter.Message
+import org.calypsonet.keyple.example.plugin.bluebird.MessageDisplayAdapter.MessageType
+import org.calypsonet.keyple.example.plugin.bluebird.databinding.ActivityMainBinding
 import org.calypsonet.keyple.plugin.storagecard.ApduInterpreterFactoryProvider
 import org.eclipse.keyple.card.calypso.CalypsoExtensionService
 import org.eclipse.keyple.card.calypso.crypto.legacysam.LegacySamExtensionService
@@ -97,36 +97,20 @@ class MainActivity :
     super.onResume()
     if (isInitializationFinalized) {
       cardReader.startCardDetection(REPEATING)
-      addMessage(
-          MessageType.ACTION,
-          "Waiting for card presentation...\n" +
-              "\nAcceptable cards:" +
-              "\n- Calypso (AID: ${CalypsoConstants.AID})," +
-              if (storageCardExtensionService != null) {
-                "\n- MIFARE Ultralight (MFOC, MFOICU1)" +
-                    "\n- MIFARE Classic 1K" +
-                    "\n- ST25/SRT512"
-              } else {
-                ""
-              })
     }
   }
 
   override fun onPause() {
     if (isInitializationFinalized) {
       cardReader.stopCardDetection()
-      addMessage(MessageType.ACTION, "Card detection stopped")
     }
     super.onPause()
   }
 
   override fun onDestroy() {
-    if (isInitializationFinalized) {
-      cardReader.let { cardReader.removeObserver(this) }
       SmartCardServiceProvider.getService()?.plugins?.forEach {
         SmartCardServiceProvider.getService()?.unregisterPlugin(it.name)
       }
-    }
     super.onDestroy()
   }
 

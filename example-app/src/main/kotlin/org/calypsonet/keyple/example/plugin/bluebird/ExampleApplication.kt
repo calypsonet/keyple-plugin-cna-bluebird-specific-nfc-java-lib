@@ -9,12 +9,12 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  ************************************************************************************** */
-package org.calypsonet.keyple.plugin.bluebird.example
+package org.calypsonet.keyple.example.plugin.bluebird
 
 import android.app.Application
 import timber.log.Timber
 
-class DemoApplication : Application() {
+class ExampleApplication : Application() {
   override fun onCreate() {
     super.onCreate()
     Timber.plant(Timber.DebugTree())

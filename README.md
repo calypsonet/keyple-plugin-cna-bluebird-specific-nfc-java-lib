@@ -4,6 +4,35 @@
 
 The **Keyple Plugin CNA Bluebird Specific NFC Java Library** is an add-on to allow an application using Keyple to interact with Bluebird terminals and their specific NFC readers.
 
+## Features and Dependencies
+
+### Core Features (No Additional Dependencies)
+
+The plugin provides full support for ISO 14443-4 contactless cards:
+- **Calypso cards** (Type A and B)
+- **Innovatron B Prime cards**
+- **SKY ECP mode** (Type A and B)
+
+These features work out-of-the-box with only the Bluebird proprietary libraries.
+
+### Storage Card Support (Requires CNA Libraries)
+
+The plugin can optionally support storage cards through the **Keyple Storage Card API**:
+- **MIFARE Ultralight** (MFOC, MFOICU1)
+- **MIFARE Classic**
+- **ST25/SRT512**
+
+**Important:** Storage card support requires additional libraries that are:
+- Available **exclusively to Calypso Networks Association (CNA) members**
+- **Optional** - the plugin works perfectly without them if you only need ISO 14443-4 cards
+- Not included in this repository
+
+Required CNA libraries for storage card support:
+- `keyple-card-cna-storagecard-java-lib-<version>.jar`
+- `keyple-plugin-cna-storagecard-java-lib-<version>.jar`
+
+If you don't have access to these libraries or don't need storage card support, simply omit them from your build.
+
 ## Project Structure
 
 This repository contains three main modules:
@@ -101,6 +130,59 @@ The example app demonstrates:
 - MIFARE Ultralight operations (requires CNA Storage Card libraries)
 - MIFARE Classic 1K operations (requires CNA Storage Card libraries)
 - ST25/SRT512 card operations (requires CNA Storage Card libraries)
+
+### MIFARE Classic Key Management
+
+The plugin provides two approaches for managing MIFARE Classic authentication keys:
+
+#### 1. Using the KeyProvider Interface (Recommended)
+
+Implement the `KeyProvider` SPI to provide keys dynamically:
+
+```kotlin
+import org.calypsonet.keyple.plugin.bluebird.spi.KeyProvider
+import org.eclipse.keyple.core.util.HexUtil
+
+class MifareClassicKeyProvider : KeyProvider {
+    override fun getKey(keyIndex: Int): ByteArray {
+        // Return the key associated with the given index
+        // This example returns a default factory key (FFFFFFFFFFFF)
+        return HexUtil.toByteArray("FFFFFFFFFFFF")
+    }
+}
+```
+
+Pass the provider when creating the plugin factory:
+
+```kotlin
+val bluebirdPlugin = SmartCardServiceProvider.getService()
+    .registerPlugin(
+        BluebirdPluginFactoryProvider.provideFactory(
+            this,
+            apduInterpreterFactory,
+            MifareClassicKeyProvider()  // Optional KeyProvider
+        )
+    )
+```
+
+#### 2. Using the loadKey() Method
+
+Load keys programmatically before authentication:
+
+```kotlin
+transactionManager
+    .prepareMifareClassicLoadKey(KeyStorageType.VOLATILE, keyNumber, keyData)
+    .prepareMifareClassicAuthenticate(blockAddress, MifareClassicKeyType.KEY_A, keyNumber)
+    .processCommands(ChannelControl.KEEP_OPEN)
+```
+
+**Important Security Notes:**
+- The example app uses a default factory key (`FFFFFFFFFFFF`) for demonstration purposes only
+- **Production applications must implement secure key management**:
+  - Retrieve keys from a secure server or Hardware Security Module (HSM)
+  - Use encrypted key storage
+  - Implement proper key rotation and access control policies
+- Keys are stored in volatile memory (session-based) and cleared when the channel opens
 
 ## License Compliance
 

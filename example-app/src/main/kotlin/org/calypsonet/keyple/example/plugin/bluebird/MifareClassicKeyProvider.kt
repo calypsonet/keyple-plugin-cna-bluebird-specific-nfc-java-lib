@@ -9,7 +9,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  ************************************************************************************** */
-package org.calypsonet.keyple.plugin.bluebird.example
+package org.calypsonet.keyple.example.plugin.bluebird
 
 import org.calypsonet.keyple.plugin.bluebird.spi.KeyProvider
 import org.eclipse.keyple.core.util.HexUtil

@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for both KEY_A (0x60) and KEY_B (0x61) authentication types
 ### Upgraded
 - Updated `keyple-plugin-storagecard-java-api`: `1.0.0` -> `1.1.0`
+### Changed
+- Renamed example app package from `org.calypsonet.keyple.example.plugin.bluebird`                                                                                                                           
+  to `org.calypsonet.keyple.example.plugin.bluebird` for better consistency
 ### Technical
 - Implemented volatile (session-based) key storage with automatic cleanup on channel open
 - Added Mifare Classic read/write operations with sector-based authentication

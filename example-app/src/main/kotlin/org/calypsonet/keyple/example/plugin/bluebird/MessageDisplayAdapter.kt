@@ -9,15 +9,15 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  ************************************************************************************** */
-package org.calypsonet.keyple.plugin.bluebird.example
+package org.calypsonet.keyple.example.plugin.bluebird
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import org.calypsonet.keyple.plugin.bluebird.example.databinding.CardActionMessageBinding
-import org.calypsonet.keyple.plugin.bluebird.example.databinding.CardHeaderMessageBinding
-import org.calypsonet.keyple.plugin.bluebird.example.databinding.CardResultMessageBinding
+import org.calypsonet.keyple.example.plugin.bluebird.databinding.CardActionMessageBinding
+import org.calypsonet.keyple.example.plugin.bluebird.databinding.CardHeaderMessageBinding
+import org.calypsonet.keyple.example.plugin.bluebird.databinding.CardResultMessageBinding
 
 class MessageDisplayAdapter(private val messages: List<Message>) :
     RecyclerView.Adapter<MessageDisplayAdapter.MessageViewHolder>() {
