@@ -347,7 +347,6 @@ class MainActivity :
 
   private fun handleCardMatchedEvent(cardReaderEvent: CardReaderEvent) {
     try {
-      addMessage(MessageType.EVENT, "Card matched")
       val selectionsResult =
           cardSelectionManager.parseScheduledCardSelectionsResponse(
               cardReaderEvent.scheduledCardSelectionsResponse)
@@ -373,14 +372,10 @@ class MainActivity :
   }
 
   private fun handleCalypsoCard(calypsoCard: CalypsoCard) {
-    addMessage(MessageType.RESULT, "CALYPSO DF NAME:\n${HexUtil.toHex(calypsoCard.dfName)}")
-
     val cardTransactionManager =
         CalypsoExtensionService.getInstance()
             .calypsoCardApiFactory
             .createSecureRegularModeTransactionManager(cardReader, calypsoCard, securitySettings)
-
-    addMessage(MessageType.ACTION, "Starting secure transaction...")
 
     val duration = measureTimeMillis {
       (cardTransactionManager as SecureRegularModeTransactionManager)
@@ -406,6 +401,9 @@ class MainActivity :
     val eventLog =
         HexUtil.toHex(calypsoCard.getFileBySfi(CalypsoConstants.SFI_EventLog).data.content)
 
+    addMessage(MessageType.EVENT, "Card matched")
+    addMessage(MessageType.RESULT, "CALYPSO DF NAME:\n${HexUtil.toHex(calypsoCard.dfName)}")
+    addMessage(MessageType.ACTION, "Starting secure transaction...")
     addMessage(
         MessageType.RESULT,
         "EnvironmentHolder file:\n$efEnvironmentHolder\n\nEventLog file:\n$eventLog")
@@ -414,18 +412,9 @@ class MainActivity :
   }
 
   private fun handleStorageCard(storageCard: StorageCard) {
-    addMessage(
-        MessageType.RESULT,
-        "${storageCard.productType.name} UID:" +
-            "\n${HexUtil.toHex(storageCard.uid)}" +
-            "\n\nPower on data:" +
-            "\n${storageCard.powerOnData}")
-
     val transactionManager =
         storageCardExtensionService.storageCardApiFactory.createStorageCardTransactionManager(
             cardReader, storageCard)
-
-    addMessage(MessageType.ACTION, "Starting reading transaction...")
 
     val duration = measureTimeMillis {
       if (storageCard.productType.hasAuthentication()) {
@@ -471,6 +460,14 @@ class MainActivity :
             }
             .trim()
 
+    addMessage(MessageType.EVENT, "Card matched")
+    addMessage(
+        MessageType.RESULT,
+        "${storageCard.productType.name} UID:" +
+            "\n${HexUtil.toHex(storageCard.uid)}" +
+            "\n\nPower on data:" +
+            "\n${storageCard.powerOnData}")
+    addMessage(MessageType.ACTION, "Starting reading transaction...")
     addMessage(MessageType.RESULT, "Blocks content:\n$blocksContent")
     addMessage(MessageType.ACTION, "Transaction duration: $duration ms")
   }

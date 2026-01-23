@@ -27,7 +27,7 @@ dependencies {
   implementation("org.eclipse.keyple:keyple-util-java-lib:2.4.0")
   // End Keyple configuration
   // Kotlin
-  implementation("org.jetbrains.kotlin:kotlin-stdlib:1.7.20")
+  implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.0")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
   // Logging
   implementation("com.jakewharton.timber:timber:5.0.1")

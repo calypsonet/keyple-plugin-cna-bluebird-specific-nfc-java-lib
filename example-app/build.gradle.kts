@@ -61,7 +61,8 @@ dependencies {
 
   // Logging
   implementation("com.jakewharton.timber:timber:5.0.1")
-  implementation("com.arcao:slf4j-timber:3.1@aar")
+  implementation("org.slf4j:slf4j-api:1.7.32")
+  implementation("uk.uuid.slf4j:slf4j-android:1.7.32-0")
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -90,7 +91,10 @@ android {
     versionCode = (project.findProperty("androidAppVersionCode") as String).toInt()
     versionName = project.findProperty("androidAppVersionName") as String
   }
-  buildFeatures { viewBinding = true }
+  buildFeatures {
+    buildConfig = true
+    viewBinding = true
+  }
   buildTypes {
     getByName("release") {
       isMinifyEnabled = false
