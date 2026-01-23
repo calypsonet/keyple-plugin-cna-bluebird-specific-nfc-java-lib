@@ -45,9 +45,7 @@ dependencies {
   implementation("org.eclipse.keyple:keyple-card-calypso-java-lib")
   implementation("org.eclipse.keyple:keyple-plugin-storagecard-java-api")
   implementation("org.eclipse.keyple:keyple-card-calypso-crypto-legacysam-java-lib")
-  implementation("org.eclipse.keyple:keyple-plugin-android-nfc-java-lib:3.2.0-SNAPSHOT") {
-    isChanging = true
-  }
+
   // End Keyple configuration
 
   // Android components
