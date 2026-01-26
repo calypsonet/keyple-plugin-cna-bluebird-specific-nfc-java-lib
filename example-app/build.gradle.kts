@@ -29,7 +29,7 @@ dependencies {
 
   // Kotlin
   implementation(kotlin("stdlib-jdk8"))
-  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 
   // Begin Keyple configuration (inspired by reference project)
   implementation(platform("org.eclipse.keyple:keyple-java-bom:2025.12.12"))
@@ -103,7 +103,11 @@ android {
     sourceCompatibility = JavaVersion.toVersion(javaSourceLevel)
     targetCompatibility = JavaVersion.toVersion(javaTargetLevel)
   }
-  kotlinOptions { jvmTarget = javaTargetLevel }
+  kotlinOptions {
+    jvmTarget = javaTargetLevel
+    apiVersion = "2.1"
+    languageVersion = "2.1"
+  }
   sourceSets {
     getByName("main").java.srcDirs("src/main/kotlin")
     getByName("debug").java.srcDirs("src/debug/kotlin")
@@ -130,6 +134,16 @@ android {
     }
   }
   lint { abortOnError = false }
+}
+
+dokka {
+  pluginsConfiguration.html {
+    footerMessage.set(project.findProperty("javadoc.copyright") as String)
+  }
+  dokkaSourceSets.named("main") {
+    includes.from(files(generatedOverviewFile))
+    moduleName.set(title)
+  }
 }
 
 fun copyLicenseFiles() {
@@ -171,23 +185,14 @@ tasks {
                     .orEmpty()
                     .trim())
             appendLine()
-            appendLine("<br>")
-            appendLine()
-            appendLine("> ${project.findProperty("javadoc.copyright") as String}")
           })
     }
   }
-  dokkaHtml.configure {
+  withType(org.jetbrains.dokka.gradle.tasks.DokkaGenerateTask::class.java).configureEach {
     dependsOn("generateDokkaOverview")
-    dokkaSourceSets {
-      named("main") {
-        noAndroidSdkLink.set(false)
-        includeNonPublic.set(false)
-        includes.from(files(generatedOverviewFile))
-        moduleName.set(title)
-      }
+    doFirst {
+      println("Generating Dokka documentation for ${project.name} version ${project.version}")
     }
-    doFirst { println("Generating Dokka HTML for ${project.name} version ${project.version}") }
   }
   withType<Jar>().configureEach {
     if (archiveClassifier.get() == "sources") {
@@ -213,9 +218,9 @@ tasks {
     }
   }
   register<Jar>("javadocJar") {
-    dependsOn(dokkaHtml)
+    dependsOn("dokkaGeneratePublicationHtml")
     archiveClassifier.set("javadoc")
-    from(dokkaHtml.flatMap { it.outputDirectory })
+    from(layout.buildDirectory.dir("dokka/html"))
     from(layout.buildDirectory.dir("resources/main"))
     doFirst { copyLicenseFiles() }
     manifest {
