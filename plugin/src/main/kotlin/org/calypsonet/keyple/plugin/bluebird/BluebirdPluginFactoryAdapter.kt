@@ -28,7 +28,7 @@ internal class BluebirdPluginFactoryAdapter
 internal constructor(
     private val activity: Activity,
     private val apduInterpreterFactory: ApduInterpreterFactory?,
-    private val keyProvider: KeyProvider?
+    private val keyProvider: KeyProvider?,
 ) : BluebirdPluginFactory, PluginFactorySpi {
 
   override fun getPluginName(): String = BluebirdConstants.PLUGIN_NAME

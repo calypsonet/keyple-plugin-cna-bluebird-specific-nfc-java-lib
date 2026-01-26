@@ -71,6 +71,6 @@ class MessageDisplayAdapter(private val messages: List<Message>) :
   enum class MessageType {
     EVENT,
     ACTION,
-    RESULT
+    RESULT,
   }
 }

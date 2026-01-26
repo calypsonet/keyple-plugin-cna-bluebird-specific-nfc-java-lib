@@ -25,7 +25,7 @@ import org.eclipse.keyple.core.plugin.storagecard.ApduInterpreterFactory
 internal class BluebirdPluginAdapter(
     private val activity: Activity,
     private val apduInterpreterFactory: ApduInterpreterFactory?,
-    private val keyProvider: KeyProvider?
+    private val keyProvider: KeyProvider?,
 ) : BluebirdPlugin, PluginSpi {
 
   override fun getName(): String = BluebirdConstants.PLUGIN_NAME
@@ -33,7 +33,8 @@ internal class BluebirdPluginAdapter(
   override fun searchAvailableReaders(): Set<ReaderSpi> =
       setOf(
           BluebirdSamReaderAdapter(),
-          BluebirdCardReaderAdapter(activity, apduInterpreterFactory, keyProvider))
+          BluebirdCardReaderAdapter(activity, apduInterpreterFactory, keyProvider),
+      )
 
   override fun onUnregister() {
     // Do nothing -> all unregisterBroadcastReceiver operations are handled by readers

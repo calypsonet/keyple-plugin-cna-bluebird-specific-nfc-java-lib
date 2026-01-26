@@ -82,9 +82,12 @@ class MainActivity :
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     initUI()
-    if (ContextCompat.checkSelfPermission(
-        this, BluebirdConstants.BLUEBIRD_SAM_ANDROID_PERMISSION) ==
-        PackageManager.PERMISSION_GRANTED) {
+    if (
+        ContextCompat.checkSelfPermission(
+            this,
+            BluebirdConstants.BLUEBIRD_SAM_ANDROID_PERMISSION,
+        ) == PackageManager.PERMISSION_GRANTED
+    ) {
       Timber.i("SAM access permission already granted")
       finalizeInitialization()
     } else {
@@ -153,7 +156,7 @@ class MainActivity :
   private fun showAlertDialogWithAction(
       titleRes: String,
       messageRes: String,
-      onOkClick: () -> Unit
+      onOkClick: () -> Unit,
   ) {
     AlertDialog.Builder(this)
         .setTitle(titleRes)
@@ -175,7 +178,8 @@ class MainActivity :
             showAlertDialogWithAction(
                 "SAM Access Permission Denied",
                 "You must accept the requested permissions to continue. Please relaunch the app.",
-                onOkClick = { finishAffinity() })
+                onOkClick = { finishAffinity() },
+            )
           }
         }
     Timber.d("Showing permission request dialog")
@@ -184,7 +188,8 @@ class MainActivity :
         "Please grant access to the SAM. This permission request appears only on the first use, and the application must be restarted after granting it.",
         onOkClick = {
           requestPermissionLauncher.launch(BluebirdConstants.BLUEBIRD_SAM_ANDROID_PERMISSION)
-        })
+        },
+    )
   }
 
   private fun finalizeInitialization() {
@@ -210,7 +215,11 @@ class MainActivity :
         SmartCardServiceProvider.getService()
             .registerPlugin(
                 BluebirdPluginFactoryProvider.provideFactory(
-                    this, apduInterpreterFactoryProvider, MifareClassicKeyProvider()))
+                    this,
+                    apduInterpreterFactoryProvider,
+                    MifareClassicKeyProvider(),
+                )
+            )
 
     // init card reader
     cardReader =
@@ -228,19 +237,29 @@ class MainActivity :
       // Here, we consider Innovatron B Prime protocol cards to be ISO14443-4 cards. We could have
       // distinguished between them.
       activateProtocol(
-          BluebirdContactlessProtocols.INNOVATRON_B_PRIME.name, ISO_14443_4_LOGICAL_PROTOCOL)
+          BluebirdContactlessProtocols.INNOVATRON_B_PRIME.name,
+          ISO_14443_4_LOGICAL_PROTOCOL,
+      )
       // Activate ECP in A Type
       activateProtocol(
-          BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP.name, ISO_14443_4_LOGICAL_PROTOCOL)
+          BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP.name,
+          ISO_14443_4_LOGICAL_PROTOCOL,
+      )
       // Activate B Type
       activateProtocol(
-          BluebirdContactlessProtocols.ISO_14443_4_B.name, ISO_14443_4_LOGICAL_PROTOCOL)
+          BluebirdContactlessProtocols.ISO_14443_4_B.name,
+          ISO_14443_4_LOGICAL_PROTOCOL,
+      )
       // Activate MIFARE Ultralight
       activateProtocol(
-          BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name, MIFARE_ULTRALIGHT_LOGICAL_PROTOCOL)
+          BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name,
+          MIFARE_ULTRALIGHT_LOGICAL_PROTOCOL,
+      )
       // Activate MIFARE Classic 1K
       activateProtocol(
-          BluebirdContactlessProtocols.MIFARE_CLASSIC_1K.name, MIFARE_CLASSIC_1K_LOGICAL_PROTOCOL)
+          BluebirdContactlessProtocols.MIFARE_CLASSIC_1K.name,
+          MIFARE_CLASSIC_1K_LOGICAL_PROTOCOL,
+      )
       // Activate ST25/SRT512
       activateProtocol(BluebirdContactlessProtocols.ST25_SRT512.name, ST25_SRT512_LOGICAL_PROTOCOL)
     }
@@ -260,10 +279,12 @@ class MainActivity :
             .readerApiFactory
             .createBasicCardSelector()
             .filterByPowerOnData(
-                LegacySamUtil.buildPowerOnDataFilter(LegacySam.ProductType.SAM_C1, null)),
+                LegacySamUtil.buildPowerOnDataFilter(LegacySam.ProductType.SAM_C1, null)
+            ),
         LegacySamExtensionService.getInstance()
             .legacySamApiFactory
-            .createLegacySamSelectionExtension())
+            .createLegacySamSelectionExtension(),
+    )
 
     try {
       val samSelectionResult = samSelectionManager.processCardSelectionScenario(samReader)
@@ -275,14 +296,20 @@ class MainActivity :
                   LegacySamExtensionService.getInstance()
                       .legacySamApiFactory
                       .createSymmetricCryptoCardTransactionManagerFactory(
-                          samReader, samSelectionResult.activeSmartCard!! as LegacySam))
+                          samReader,
+                          samSelectionResult.activeSmartCard!! as LegacySam,
+                      )
+              )
               .assignDefaultKif(PERSONALIZATION, 0x21) // required for old Innovatron B Prime cards
               .assignDefaultKif(LOAD, 0x27)
               .assignDefaultKif(DEBIT, 0x30)
     } catch (e: Exception) {
       Timber.e(e, "An exception occurred while selecting the SAM. ${e.message}")
       showAlertDialogWithAction(
-          "SAM Error", "Unable to communicate with the SAM", onOkClick = { finishAffinity() })
+          "SAM Error",
+          "Unable to communicate with the SAM",
+          onOkClick = { finishAffinity() },
+      )
     }
     Timber.i("Security settings initialized")
   }
@@ -297,7 +324,8 @@ class MainActivity :
             .filterByDfName(CalypsoConstants.AID),
         CalypsoExtensionService.getInstance()
             .calypsoCardApiFactory
-            .createCalypsoCardSelectionExtension())
+            .createCalypsoCardSelectionExtension(),
+    )
     if (storageCardExtensionService != null) {
       cardSelectionManager.prepareSelection(
           SmartCardServiceProvider.getService()
@@ -305,7 +333,9 @@ class MainActivity :
               .createBasicCardSelector()
               .filterByCardProtocol(MIFARE_ULTRALIGHT_LOGICAL_PROTOCOL),
           storageCardExtensionService.storageCardApiFactory.createStorageCardSelectionExtension(
-              ProductType.MIFARE_ULTRALIGHT))
+              ProductType.MIFARE_ULTRALIGHT
+          ),
+      )
       cardSelectionManager.prepareSelection(
           SmartCardServiceProvider.getService()
               .readerApiFactory
@@ -314,14 +344,17 @@ class MainActivity :
           storageCardExtensionService.storageCardApiFactory
               .createStorageCardSelectionExtension(ProductType.MIFARE_CLASSIC_1K)
               .prepareMifareClassicAuthenticate(0, MifareClassicKeyType.KEY_A, 0)
-              .prepareReadBlocks(0, 0))
+              .prepareReadBlocks(0, 0),
+      )
       cardSelectionManager.prepareSelection(
           SmartCardServiceProvider.getService()
               .readerApiFactory
               .createBasicCardSelector()
               .filterByCardProtocol(ST25_SRT512_LOGICAL_PROTOCOL),
           storageCardExtensionService.storageCardApiFactory.createStorageCardSelectionExtension(
-              ProductType.ST25_SRT512))
+              ProductType.ST25_SRT512
+          ),
+      )
     }
     cardSelectionManager.scheduleCardSelectionScenario(cardReader, ALWAYS)
     Timber.i("Card selection prepared")
@@ -349,7 +382,8 @@ class MainActivity :
     try {
       val selectionsResult =
           cardSelectionManager.parseScheduledCardSelectionsResponse(
-              cardReaderEvent.scheduledCardSelectionsResponse)
+              cardReaderEvent.scheduledCardSelectionsResponse
+          )
       val card = selectionsResult.activeSmartCard
       when (card) {
         is CalypsoCard -> {
@@ -384,19 +418,22 @@ class MainActivity :
               CalypsoConstants.SFI_EnvironmentAndHolder,
               CalypsoConstants.RECORD_NUMBER_1,
               CalypsoConstants.RECORD_NUMBER_1,
-              CalypsoConstants.RECORD_SIZE)
+              CalypsoConstants.RECORD_SIZE,
+          )
           .prepareReadRecords(
               CalypsoConstants.SFI_EventLog,
               CalypsoConstants.RECORD_NUMBER_1,
               CalypsoConstants.RECORD_NUMBER_1,
-              CalypsoConstants.RECORD_SIZE)
+              CalypsoConstants.RECORD_SIZE,
+          )
           .prepareCloseSecureSession()
           .processCommands(ChannelControl.CLOSE_AFTER)
     }
 
     val efEnvironmentHolder =
         HexUtil.toHex(
-            calypsoCard.getFileBySfi(CalypsoConstants.SFI_EnvironmentAndHolder).data.content)
+            calypsoCard.getFileBySfi(CalypsoConstants.SFI_EnvironmentAndHolder).data.content
+        )
 
     val eventLog =
         HexUtil.toHex(calypsoCard.getFileBySfi(CalypsoConstants.SFI_EventLog).data.content)
@@ -406,7 +443,8 @@ class MainActivity :
     addMessage(MessageType.ACTION, "Starting secure transaction...")
     addMessage(
         MessageType.RESULT,
-        "EnvironmentHolder file:\n$efEnvironmentHolder\n\nEventLog file:\n$eventLog")
+        "EnvironmentHolder file:\n$efEnvironmentHolder\n\nEventLog file:\n$eventLog",
+    )
 
     addMessage(MessageType.ACTION, "Transaction duration: $duration ms")
   }
@@ -414,7 +452,9 @@ class MainActivity :
   private fun handleStorageCard(storageCard: StorageCard) {
     val transactionManager =
         storageCardExtensionService.storageCardApiFactory.createStorageCardTransactionManager(
-            cardReader, storageCard)
+            cardReader,
+            storageCard,
+        )
 
     val duration = measureTimeMillis {
       if (storageCard.productType.hasAuthentication()) {
@@ -466,7 +506,8 @@ class MainActivity :
         "${storageCard.productType.name} UID:" +
             "\n${HexUtil.toHex(storageCard.uid)}" +
             "\n\nPower on data:" +
-            "\n${storageCard.powerOnData}")
+            "\n${storageCard.powerOnData}",
+    )
     addMessage(MessageType.ACTION, "Starting reading transaction...")
     addMessage(MessageType.RESULT, "Blocks content:\n$blocksContent")
     addMessage(MessageType.ACTION, "Transaction duration: $duration ms")
@@ -475,7 +516,8 @@ class MainActivity :
   private fun handleCardInsertedEvent() {
     addMessage(
         MessageType.EVENT,
-        "Unrecognized card: ${(cardReader as ConfigurableCardReader).currentProtocol}")
+        "Unrecognized card: ${(cardReader as ConfigurableCardReader).currentProtocol}",
+    )
     cardReader.finalizeCardProcessing()
     addMessage(MessageType.ACTION, "Waiting for card removal...")
   }

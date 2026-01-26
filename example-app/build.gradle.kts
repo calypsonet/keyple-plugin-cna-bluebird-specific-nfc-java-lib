@@ -25,7 +25,10 @@ dependencies {
           mapOf(
               "dir" to "libs",
               "include" to listOf("*.jar", "*.aar"),
-              "exclude" to listOf("*-mock.jar"))))
+              "exclude" to listOf("*-mock.jar"),
+          )
+      )
+  )
 
   // Kotlin
   implementation(kotlin("stdlib-jdk8"))
@@ -183,9 +186,11 @@ tasks {
                     .takeIf { it.exists() }
                     ?.readText()
                     .orEmpty()
-                    .trim())
+                    .trim()
+            )
             appendLine()
-          })
+          }
+      )
     }
   }
   withType(org.jetbrains.dokka.gradle.tasks.DokkaGenerateTask::class.java).configureEach {
@@ -201,7 +206,9 @@ tasks {
         attributes(
             mapOf(
                 "Implementation-Title" to "$title Sources",
-                "Implementation-Version" to project.version))
+                "Implementation-Version" to project.version,
+            )
+        )
       }
     }
   }
@@ -214,7 +221,9 @@ tasks {
       attributes(
           mapOf(
               "Implementation-Title" to "$title Documentation",
-              "Implementation-Version" to project.version))
+              "Implementation-Version" to project.version,
+          )
+      )
     }
   }
   register<Jar>("javadocJar") {
@@ -227,7 +236,9 @@ tasks {
       attributes(
           mapOf(
               "Implementation-Title" to "$title Documentation",
-              "Implementation-Version" to project.version))
+              "Implementation-Version" to project.version,
+          )
+      )
     }
   }
   register("copyLicenseFiles") { doLast { copyLicenseFiles() } }
@@ -276,7 +287,9 @@ afterEvaluate {
               mapOf(
                   "project.build.sourceEncoding" to "UTF-8",
                   "maven.compiler.source" to javaSourceLevel,
-                  "maven.compiler.target" to javaTargetLevel))
+                  "maven.compiler.target" to javaTargetLevel,
+              )
+          )
         }
       }
     }

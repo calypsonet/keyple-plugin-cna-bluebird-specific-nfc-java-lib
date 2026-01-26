@@ -35,7 +35,7 @@ object BluebirdPluginFactoryProvider {
   fun provideFactory(
       activity: Activity,
       apduInterpreterFactory: ApduInterpreterFactory? = null,
-      keyProvider: KeyProvider? = null
+      keyProvider: KeyProvider? = null,
   ): BluebirdPluginFactory {
     return BluebirdPluginFactoryAdapter(activity, apduInterpreterFactory, keyProvider)
   }

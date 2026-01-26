@@ -3,7 +3,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 plugins {
-    id("com.diffplug.spotless") version "7.0.4"
+    id("com.diffplug.spotless") version "8.2.0"
     id("org.jetbrains.dokka") version "2.1.0"
 }
 buildscript {

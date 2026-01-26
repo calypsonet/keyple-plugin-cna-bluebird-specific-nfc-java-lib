@@ -42,7 +42,7 @@ import timber.log.Timber
 internal class BluebirdCardReaderAdapter(
     private val activity: Activity,
     private val apduInterpreterFactory: ApduInterpreterFactory?,
-    private val keyProvider: KeyProvider?
+    private val keyProvider: KeyProvider?,
 ) :
     BluebirdCardReader,
     ObservableReaderSpi,
@@ -300,14 +300,16 @@ internal class BluebirdCardReaderAdapter(
     if (Build.VERSION.SDK_INT < MIN_SDK_API_LEVEL_ECP) {
       throw UnsupportedOperationException(
           "The terminal Android SDK API level must be higher than $MIN_SDK_API_LEVEL_ECP when using the ECP mode. Current API level is " +
-              Build.VERSION.SDK_INT)
+              Build.VERSION.SDK_INT
+      )
     }
   }
 
   @SuppressLint("UnspecifiedRegisterReceiverFlag")
   private fun registerBroadcastReceiverIfNeeded() {
     Timber.d(
-        "Register BB NFC broadcast receiver (already registered? $isBroadcastReceiverRegistered)")
+        "Register BB NFC broadcast receiver (already registered? $isBroadcastReceiverRegistered)"
+    )
     if (isBroadcastReceiverRegistered) {
       return
     }
@@ -322,7 +324,8 @@ internal class BluebirdCardReaderAdapter(
 
   private fun unregisterBroadcastReceiver() {
     Timber.d(
-        "Unregister BB NFC broadcast receiver (already unregistered? ${!isBroadcastReceiverRegistered})")
+        "Unregister BB NFC broadcast receiver (already unregistered? ${!isBroadcastReceiverRegistered})"
+    )
     if (!isBroadcastReceiverRegistered) {
       return
     }
@@ -360,7 +363,8 @@ internal class BluebirdCardReaderAdapter(
       isCardChannelOpen = false
       currentProtocol =
           BluebirdContactlessProtocols.fromValue(
-              intent.getIntExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_TYPE_KEY, -1))
+              intent.getIntExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_TYPE_KEY, -1)
+          )
       Timber.d("Discovered tag with protocol: $currentProtocol")
       // the following UID may be overwritten later according to the card tech
       uid = intent.getByteArrayExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_DATA_KEY) as ByteArray
@@ -436,7 +440,8 @@ internal class BluebirdCardReaderAdapter(
     val transmitResult = nfcReader.transmit(apdu)
     if (transmitResult.mData != null && transmitResult.mData.size > 256) {
       throw CardIOException(
-          "Transmit APDU error: unexpected response length: ${transmitResult.mData.size}")
+          "Transmit APDU error: unexpected response length: ${transmitResult.mData.size}"
+      )
     }
     return transmitResult.mData
         ?: throw CardIOException("Transmit APDU error: ${transmitResult.mResult}")
@@ -457,7 +462,8 @@ internal class BluebirdCardReaderAdapter(
             return response.copyOfRange(1, 17)
           } else {
             throw CardIOException(
-                "Read block error: operation failed with result code ${response[0]}")
+                "Read block error: operation failed with result code ${response[0]}"
+            )
           }
         } else {
           throw CardIOException("Read block error: invalid response format")
@@ -472,7 +478,8 @@ internal class BluebirdCardReaderAdapter(
             return response.copyOfRange(1, 17)
           } else {
             throw CardIOException(
-                "Read block error: operation failed with result code ${response[0]}")
+                "Read block error: operation failed with result code ${response[0]}"
+            )
           }
         } else {
           throw CardIOException("Read block error: invalid response format")
@@ -487,7 +494,8 @@ internal class BluebirdCardReaderAdapter(
             return response.copyOfRange(1, 5)
           } else {
             throw CardIOException(
-                "Read block error: operation failed with result code ${response[0]}")
+                "Read block error: operation failed with result code ${response[0]}"
+            )
           }
         } else {
           throw CardIOException("Read block error: invalid response format")
@@ -535,7 +543,8 @@ internal class BluebirdCardReaderAdapter(
     // Only Mifare Classic requires authentication
     if (currentProtocol != BluebirdContactlessProtocols.MIFARE_CLASSIC_1K) {
       throw CardIOException(
-          "General Authenticate is only supported for Mifare Classic. Current protocol: $currentProtocol")
+          "General Authenticate is only supported for Mifare Classic. Current protocol: $currentProtocol"
+      )
     }
 
     // Retrieve the key: first check loaded key, then fall back to KeyProvider
@@ -562,7 +571,8 @@ internal class BluebirdCardReaderAdapter(
           MIFARE_KEY_B.toInt() -> 0x01.toByte() // Bluebird uses 0x01 for KEY_B
           else ->
               throw IllegalArgumentException(
-                  "Unsupported key type: 0x${keyType.toString(16)}. Only KEY_A (0x60) and KEY_B (0x61) are supported.")
+                  "Unsupported key type: 0x${keyType.toString(16)}. Only KEY_A (0x60) and KEY_B (0x61) are supported."
+              )
         }
 
     // Perform authentication using Bluebird NFC API

@@ -72,7 +72,8 @@ internal class BluebirdSamReaderAdapter : BluebirdSamReader, ReaderSpi {
         deferredSamResponse.complete(msg.data.getByteArray("receive") ?: byteArrayOf())
       } else {
         deferredSamResponse.completeExceptionally(
-            CardIOException("Unexpected SAM message code received: {${msg.what}"))
+            CardIOException("Unexpected SAM message code received: {${msg.what}")
+        )
       }
     }
 
