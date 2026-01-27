@@ -36,8 +36,8 @@ import org.eclipse.keyple.core.plugin.storagecard.internal.spi.ApduInterpreterFa
 import org.eclipse.keyple.core.plugin.storagecard.internal.spi.ApduInterpreterSpi
 import org.eclipse.keyple.core.util.Assert
 import org.eclipse.keyple.core.util.HexUtil
+import org.eclipse.keyple.core.util.logging.LoggerFactory
 import org.json.JSONObject
-import timber.log.Timber
 
 internal class BluebirdCardReaderAdapter(
     private val activity: Activity,
@@ -53,8 +53,8 @@ internal class BluebirdCardReaderAdapter(
     BroadcastReceiver() {
 
   private companion object {
+    private val logger = LoggerFactory.getLogger(BluebirdCardReaderAdapter::class.java)
     private const val MIN_SDK_API_LEVEL_ECP = 28
-    private const val PING_APDU = "00C0000000"
     private const val MIFARE_KEY_A: Byte = 0x60
     private const val MIFARE_KEY_B: Byte = 0x61
   }
@@ -62,9 +62,7 @@ internal class BluebirdCardReaderAdapter(
   @SuppressLint("WrongConstant")
   private val nfcReader: ExtNfcReader =
       activity.getSystemService(ExtNfcReader.READER_SERVICE_NAME) as ExtNfcReader
-  private val nfcEcp: ExtNfcReader.ECP? =
-      if (Build.VERSION.SDK_INT >= MIN_SDK_API_LEVEL_ECP) nfcReader.ecp else null
-
+  private val nfcEcp: ExtNfcReader.ECP? = nfcReader.ecp
   private var isBroadcastReceiverRegistered: Boolean = false
   private var isCardChannelOpen: Boolean = false
   private var isWaitingForCardRemoval = false
@@ -100,19 +98,19 @@ internal class BluebirdCardReaderAdapter(
   }
 
   override fun onStartDetection() {
-    Timber.d("Start card scan using polling protocols $pollingProtocols configuration")
+    logger.debug("Start card scan using polling protocols $pollingProtocols configuration")
     startScan()
   }
 
   override fun onStopDetection() {
-    Timber.d("Stop card scan")
+    logger.debug("Stop card scan")
     var status = nfcReader.stopScan()
     if (status != ResultCode.SUCCESS) {
-      Timber.w("Error while stopping the scan: {$status: ${getNfcErrorMessage(status)}}")
+      logger.warn("Error while stopping the scan: {$status: ${getNfcErrorMessage(status)}}")
     }
     status = nfcReader.BBextNfcCarrierOff()
     if (status != ResultCode.SUCCESS) {
-      Timber.w("Error while setting the RF field off: {$status: ${getNfcErrorMessage(status)}}")
+      logger.warn("Error while setting the RF field off: {$status: ${getNfcErrorMessage(status)}}")
     }
     nfcReader.disconnect()
     nfcReader.enable(false)
@@ -140,7 +138,7 @@ internal class BluebirdCardReaderAdapter(
             .put("type", getTypeFromProtocol(currentProtocol!!))
             .put("uid", HexUtil.toHex(uid))
             .toString()
-    Timber.d("Power on data: $powerOnData")
+    logger.debug("Power on data: $powerOnData")
     isCardChannelOpen = true
     loadedKey = null // Clear any previously loaded key
   }
@@ -307,7 +305,7 @@ internal class BluebirdCardReaderAdapter(
 
   @SuppressLint("UnspecifiedRegisterReceiverFlag")
   private fun registerBroadcastReceiverIfNeeded() {
-    Timber.d(
+    logger.debug(
         "Register BB NFC broadcast receiver (already registered? $isBroadcastReceiverRegistered)"
     )
     if (isBroadcastReceiverRegistered) {
@@ -323,7 +321,7 @@ internal class BluebirdCardReaderAdapter(
   }
 
   private fun unregisterBroadcastReceiver() {
-    Timber.d(
+    logger.debug(
         "Unregister BB NFC broadcast receiver (already unregistered? ${!isBroadcastReceiverRegistered})"
     )
     if (!isBroadcastReceiverRegistered) {
@@ -339,7 +337,7 @@ internal class BluebirdCardReaderAdapter(
 
     var status = nfcReader.BBextNfcCarrierOn()
     if (status != ResultCode.SUCCESS) {
-      Timber.e("Error while setting the RF field on: {$status: ${getNfcErrorMessage(status)}}")
+      logger.error("Error while setting the RF field on: {$status: ${getNfcErrorMessage(status)}}")
       return
     }
 
@@ -351,7 +349,7 @@ internal class BluebirdCardReaderAdapter(
       }
     }
     if (status != ResultCode.SUCCESS) {
-      Timber.e("Card scan error: {$status: ${getNfcErrorMessage(status)}}")
+      logger.error("Card scan error: {$status: ${getNfcErrorMessage(status)}}")
       return
     }
 
@@ -365,7 +363,7 @@ internal class BluebirdCardReaderAdapter(
           BluebirdContactlessProtocols.fromValue(
               intent.getIntExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_TYPE_KEY, -1)
           )
-      Timber.d("Discovered tag with protocol: $currentProtocol")
+      logger.debug("Discovered tag with protocol: $currentProtocol")
       // the following UID may be overwritten later according to the card tech
       uid = intent.getByteArrayExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_DATA_KEY) as ByteArray
       waitForCardInsertionAutonomousApi.onCardInserted()
@@ -387,12 +385,12 @@ internal class BluebirdCardReaderAdapter(
         val status = nfcReader.connect()
         // If reconnection fails, the card has been removed
         if (status < 0) {
-          Timber.d("Card removed: reconnection failed with status $status")
+          logger.debug("Card removed: reconnection failed with status $status")
           isWaitingForCardRemoval = false
           break
         }
         // If reconnection succeeds, the card is still present
-        Timber.d("Card still present: reconnection succeeded")
+        logger.debug("Card still present: reconnection succeeded")
       }
     } finally {
       if (nfcReader.isConnected) {

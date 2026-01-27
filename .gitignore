@@ -1,8 +1,12 @@
 # Java class files
 *.class
 
-# Private libs
+# Private Libraries
+# Ignore the entire libs directory for the 'plugin' module.
 plugin/libs/
+# For 'example-app', ignore private .jar files but keep mocks.
+/example-app/libs/*.jar
+!/example-app/libs/*-mock.jar
 
 # Generated files
 gen/

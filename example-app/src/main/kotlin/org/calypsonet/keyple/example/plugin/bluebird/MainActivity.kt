@@ -20,10 +20,10 @@ import androidx.activity.result.contract.ActivityResultContracts.RequestPermissi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlin.system.measureTimeMillis
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.calypsonet.keyple.card.storagecard.StorageCardExtensionService
@@ -99,14 +99,13 @@ class MainActivity :
   override fun onResume() {
     super.onResume()
     if (isInitializationFinalized) {
-      cardReader.startCardDetection(REPEATING)
-      addMessage(MessageType.ACTION, getWaitingForCardPresentationMessage())
+      startCardDetection()
     }
   }
 
   override fun onPause() {
     if (isInitializationFinalized) {
-      cardReader.stopCardDetection()
+      stopCardDetection()
     }
     super.onPause()
   }
@@ -134,7 +133,7 @@ class MainActivity :
   }
 
   private fun addMessage(type: MessageType, message: String) {
-    CoroutineScope(Dispatchers.Main).launch {
+    lifecycleScope.launch(Dispatchers.Main) {
       messages.add(Message(type, message))
       messageDisplayAdapter.notifyItemInserted(messages.lastIndex)
       binding.messageRecyclerView.smoothScrollToPosition(messages.size - 1)
@@ -142,7 +141,7 @@ class MainActivity :
     Timber.d("${type.name}: %s", message)
   }
 
-  private fun getWaitingForCardPresentationMessage(): String {
+  private fun buildWaitingForCardPresentationMessage(): String {
     return "Waiting for card presentation...\n" +
         "\nAcceptable cards:" +
         "\n- Calypso (AID: ${CalypsoConstants.AID})," +
@@ -158,12 +157,14 @@ class MainActivity :
       messageRes: String,
       onOkClick: () -> Unit,
   ) {
-    AlertDialog.Builder(this)
-        .setTitle(titleRes)
-        .setMessage(messageRes)
-        .setPositiveButton("OK") { _, _ -> onOkClick() }
-        .setCancelable(false)
-        .show()
+    lifecycleScope.launch(Dispatchers.Main) {
+      AlertDialog.Builder(this@MainActivity)
+          .setTitle(titleRes)
+          .setMessage(messageRes)
+          .setPositiveButton("OK") { _, _ -> onOkClick() }
+          .setCancelable(false)
+          .show()
+    }
   }
 
   private fun checkSamAccessPermission() {
@@ -270,7 +271,8 @@ class MainActivity :
   }
 
   private fun initSecuritySettings() {
-    Timber.i("Initializing security settings...")
+    Timber.i("Initializing security settings")
+
     val samSelectionManager: CardSelectionManager =
         SmartCardServiceProvider.getService().readerApiFactory.createCardSelectionManager()
 
@@ -289,6 +291,8 @@ class MainActivity :
     try {
       val samSelectionResult = samSelectionManager.processCardSelectionScenario(samReader)
 
+      check(samSelectionResult.activeSmartCard != null) { "No SAM found" }
+
       securitySettings =
           CalypsoExtensionService.getInstance()
               .calypsoCardApiFactory
@@ -303,19 +307,20 @@ class MainActivity :
               .assignDefaultKif(PERSONALIZATION, 0x21) // required for old Innovatron B Prime cards
               .assignDefaultKif(LOAD, 0x27)
               .assignDefaultKif(DEBIT, 0x30)
+
+      Timber.i("Security settings initialized")
     } catch (e: Exception) {
-      Timber.e(e, "An exception occurred while selecting the SAM. ${e.message}")
+      Timber.e(e, "Failed to initialize security settings")
       showAlertDialogWithAction(
           "SAM Error",
-          "Unable to communicate with the SAM",
+          "Unable to communicate with the SAM\n\nThe application will now close",
           onOkClick = { finishAffinity() },
       )
     }
-    Timber.i("Security settings initialized")
   }
 
   private fun prepareCardSelection() {
-    Timber.i("Preparing card selection...")
+    Timber.i("Preparing card selection")
     cardSelectionManager.prepareSelection(
         SmartCardServiceProvider.getService()
             .readerApiFactory
@@ -360,8 +365,25 @@ class MainActivity :
     Timber.i("Card selection prepared")
   }
 
+  private fun startCardDetection() {
+    Timber.i("Starting card detection")
+    cardReader.startCardDetection(REPEATING)
+    addMessage(
+        MessageType.ACTION,
+        buildWaitingForCardPresentationMessage(),
+    )
+    Timber.i("Card detection started")
+  }
+
+  private fun stopCardDetection() {
+    Timber.i("Stopping card detection")
+    cardReader.stopCardDetection()
+    addMessage(MessageType.ACTION, "Card detection stopped")
+    Timber.i("Card detection stopped")
+  }
+
   override fun onReaderEvent(readerEvent: CardReaderEvent) {
-    CoroutineScope(Dispatchers.IO).launch {
+    lifecycleScope.launch(Dispatchers.IO) {
       when (readerEvent.type) {
         CardReaderEvent.Type.CARD_MATCHED -> handleCardMatchedEvent(readerEvent)
         CardReaderEvent.Type.CARD_INSERTED -> handleCardInsertedEvent()
@@ -524,6 +546,6 @@ class MainActivity :
 
   private fun handleCardRemovedEvent() {
     addMessage(MessageType.EVENT, "Card removed")
-    addMessage(MessageType.ACTION, getWaitingForCardPresentationMessage())
+    addMessage(MessageType.ACTION, buildWaitingForCardPresentationMessage())
   }
 }

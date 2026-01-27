@@ -24,13 +24,11 @@ dependencies {
   implementation("org.eclipse.keyple:keyple-common-java-api:2.0.2")
   implementation("org.eclipse.keyple:keyple-plugin-java-api:2.3.2")
   api("org.eclipse.keyple:keyple-plugin-storagecard-java-api:1.1.0-SNAPSHOT") { isChanging = true }
-  implementation("org.eclipse.keyple:keyple-util-java-lib:2.4.0")
+  implementation("org.eclipse.keyple:keyple-util-java-lib:2.5.0-SNAPSHOT") { isChanging = true }
   // End Keyple configuration
   // Kotlin
-  implementation("org.jetbrains.kotlin:kotlin-stdlib:2.1.0")
+  implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.0")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
-  // Logging
-  implementation("com.jakewharton.timber:timber:5.0.1")
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -67,7 +65,7 @@ android {
     sourceCompatibility = JavaVersion.toVersion(javaSourceLevel)
     targetCompatibility = JavaVersion.toVersion(javaTargetLevel)
   }
-  kotlinOptions { jvmTarget = javaTargetLevel }
+  kotlin { jvmToolchain(javaTargetLevel.substringAfterLast('.').toInt()) }
   sourceSets {
     getByName("main").java.srcDirs("src/main/kotlin")
     getByName("debug").java.srcDirs("src/debug/kotlin")
