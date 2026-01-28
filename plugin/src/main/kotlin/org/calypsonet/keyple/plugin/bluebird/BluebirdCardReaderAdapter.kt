@@ -448,22 +448,7 @@ internal class BluebirdCardReaderAdapter(
 
   override fun readBlock(blockNumber: Int, length: Int): ByteArray {
     when (currentProtocol) {
-      BluebirdContactlessProtocols.MIFARE_ULTRALIGHT -> {
-        val response =
-            nfcReader.BBextNfcMifareRead(blockNumber.toByte())
-                ?: throw CardIOException("Read block error: BBextNfcMifareRead returned null")
-        if (response.size == 17) {
-          if (response[0] == 0.toByte()) {
-            return response.copyOfRange(1, 17)
-          } else {
-            throw CardIOException(
-                "Read block error: operation failed with result code ${response[0]}"
-            )
-          }
-        } else {
-          throw CardIOException("Read block error: invalid response format")
-        }
-      }
+      BluebirdContactlessProtocols.MIFARE_ULTRALIGHT,
       BluebirdContactlessProtocols.MIFARE_CLASSIC -> {
         val response =
             nfcReader.BBextNfcMifareRead(blockNumber.toByte())
@@ -504,12 +489,7 @@ internal class BluebirdCardReaderAdapter(
 
   override fun writeBlock(blockNumber: Int, data: ByteArray) {
     when (currentProtocol) {
-      BluebirdContactlessProtocols.MIFARE_ULTRALIGHT -> {
-        val resultCode = nfcReader.BBextNfcMifareWrite(blockNumber.toByte(), data)
-        if (resultCode != 0) {
-          throw CardIOException("Write block error: operation failed with result code $resultCode")
-        }
-      }
+      BluebirdContactlessProtocols.MIFARE_ULTRALIGHT,
       BluebirdContactlessProtocols.MIFARE_CLASSIC -> {
         val resultCode = nfcReader.BBextNfcMifareWrite(blockNumber.toByte(), data)
         if (resultCode != 0) {
