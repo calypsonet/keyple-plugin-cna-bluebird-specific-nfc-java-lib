@@ -127,7 +127,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This is the initial release.
 
 [unreleased]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.1.2...HEAD
-[3.2.0]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.1.2...3.2.0
 [3.1.2]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.1.1...3.1.2
 [3.1.1]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.1.0...3.1.1
 [3.1.0]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.0.0...3.1.0
