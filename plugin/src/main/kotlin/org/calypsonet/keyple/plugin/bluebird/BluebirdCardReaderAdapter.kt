@@ -517,14 +517,13 @@ internal class BluebirdCardReaderAdapter(
   override fun generalAuthenticate(blockAddress: Int, keyType: Int, keyNumber: Int): Boolean {
     // Only Mifare Classic requires authentication
     if (currentProtocol != BluebirdContactlessProtocols.MIFARE_CLASSIC) {
-      throw CardIOException(
+      throw IllegalStateException(
           "General Authenticate is only supported for Mifare Classic. Current protocol: $currentProtocol"
       )
     }
 
     // Retrieve the key: first check loaded key, then fall back to KeyProvider
-    val key = loadedKey
-    loadedKey = null // Consume the loaded key (single-use)
+    val key = loadedKey?.also { loadedKey = null }
 
     val usedKey =
         key
