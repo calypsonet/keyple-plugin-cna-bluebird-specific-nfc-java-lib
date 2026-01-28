@@ -18,7 +18,7 @@ These features work out-of-the-box with only the Bluebird proprietary libraries.
 ### Storage Card Support (Requires CNA Libraries)
 
 The plugin can optionally support storage cards through the **Keyple Plugin Storage Card API**:
-- **MIFARE Ultralight** (MFOC, MFOICU1)
+- **MIFARE Ultralight**
 - **MIFARE Classic**
 - **ST25/SRT512**
 
