@@ -17,7 +17,7 @@ These features work out-of-the-box with only the Bluebird proprietary libraries.
 
 ### Storage Card Support (Requires CNA Libraries)
 
-The plugin can optionally support storage cards through the **Keyple Storage Card API**:
+The plugin can optionally support storage cards through the **Keyple Plugin Storage Card API**:
 - **MIFARE Ultralight** (MFOC, MFOICU1)
 - **MIFARE Classic**
 - **ST25/SRT512**
@@ -45,16 +45,7 @@ This repository contains three main modules:
 
 ### Public Mock Plugin (No Proprietary Libraries Required)
 
-The mock plugin can be built without any proprietary libraries:
-
-```bash
-./gradlew plugin-mock:build
-```
-
-The resulting AAR will be available in:
-```
-plugin-mock/build/outputs/aar/keyple-plugin-cna-bluebird-specific-nfc-java-lib-<version>-release-mock.aar
-```
+The mock plugin can be built without any proprietary libraries
 
 ### Full Implementation Plugin (Requires Bluebird Libraries)
 
@@ -71,34 +62,15 @@ These libraries are **not included** in this repository due to licensing restric
 #### Setup Instructions
 
 1. Obtain the required Bluebird libraries from Bluebird or your authorized distributor
-2. Create the `libs` directory in the `plugin` module:
-   ```bash
-   mkdir -p plugin/libs
-   ```
-3. Copy the Bluebird JAR files into this directory:
-   ```bash
-   cp /path/to/bluebird-extnfc.jar plugin/libs/
-   cp /path/to/sam_ng_201710.jar plugin/libs/
-   ```
-4. Build the plugin:
-   ```bash
-   ./gradlew plugin:build
-   ```
-
-The resulting AAR will be available in:
-```
-plugin/build/outputs/aar/keyple-plugin-cna-bluebird-specific-nfc-java-lib-<version>-release.aar
-```
+2. Create the `libs` directory in the `plugin` module
+3. Copy the Bluebird JAR files into this directory
+4. Build the plugin
 
 **Note**: The `plugin/libs/` directory is excluded from version control (`.gitignore`) to prevent accidental distribution of proprietary code.
 
 ## Building the Example Application
 
 The example application demonstrates the usage of the full implementation plugin.
-
-### Prerequisites
-
-Same as for the full implementation plugin (see above).
 
 ### Optional: CNA Storage Card Libraries
 
@@ -113,18 +85,6 @@ example-app/libs/
 
 The example application will work without these libraries, but with limited storage card functionality.
 
-### Build and Install
-
-```bash
-./gradlew example-app:assembleDebug
-./gradlew example-app:installDebug
-```
-
-Or build and install in one command:
-```bash
-./gradlew example-app:assembleDebug example-app:installDebug
-```
-
 The example app demonstrates:
 - Calypso card transactions (ISO 14443-4 A/B)
 - MIFARE Ultralight operations (requires CNA Storage Card libraries)
@@ -137,44 +97,12 @@ The plugin provides two approaches for managing MIFARE Classic authentication ke
 
 #### 1. Using the KeyProvider Interface (Recommended)
 
-Implement the `KeyProvider` SPI to provide keys dynamically:
-
-```kotlin
-import org.calypsonet.keyple.plugin.bluebird.spi.KeyProvider
-import org.eclipse.keyple.core.util.HexUtil
-
-class MifareClassicKeyProvider : KeyProvider {
-    override fun getKey(keyIndex: Int): ByteArray {
-        // Return the key associated with the given index
-        // This example returns a default factory key (FFFFFFFFFFFF)
-        return HexUtil.toByteArray("FFFFFFFFFFFF")
-    }
-}
-```
-
-Pass the provider when creating the plugin factory:
-
-```kotlin
-val bluebirdPlugin = SmartCardServiceProvider.getService()
-    .registerPlugin(
-        BluebirdPluginFactoryProvider.provideFactory(
-            this,
-            apduInterpreterFactory,
-            MifareClassicKeyProvider()  // Optional KeyProvider
-        )
-    )
-```
+Implement the `KeyProvider` SPI to provide keys dynamically.
+Pass the provider when creating the plugin factory.
 
 #### 2. Using the loadKey() Method
 
-Load keys programmatically before authentication:
-
-```kotlin
-transactionManager
-    .prepareMifareClassicLoadKey(KeyStorageType.VOLATILE, keyNumber, keyData)
-    .prepareMifareClassicAuthenticate(blockAddress, MifareClassicKeyType.KEY_A, keyNumber)
-    .processCommands(ChannelControl.KEEP_OPEN)
-```
+Load keys programmatically before authentication using `prepareMifareClassicLoadKey`.
 
 **Important Security Notes:**
 - The example app uses a default factory key (`FFFFFFFFFFFF`) for demonstration purposes only
