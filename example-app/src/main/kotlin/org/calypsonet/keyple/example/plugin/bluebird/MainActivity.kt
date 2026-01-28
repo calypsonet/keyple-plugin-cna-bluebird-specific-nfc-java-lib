@@ -144,7 +144,7 @@ class MainActivity :
   private fun buildWaitingForCardPresentationMessage(): String {
     return "Waiting for card presentation...\n" +
         "\nAcceptable cards:" +
-        "\n- Calypso (AID: ${CalypsoConstants.AID})," +
+        "\n- Calypso (AID: ${CalypsoConstants.AID})" +
         if (storageCardExtensionService != null) {
           "\n- MIFARE Ultralight (MFOC, MFOICU1)" + "\n- MIFARE Classic 1K" + "\n- ST25/SRT512"
         } else {
@@ -251,7 +251,7 @@ class MainActivity :
           BluebirdContactlessProtocols.ISO_14443_4_B.name,
           ISO_14443_4_LOGICAL_PROTOCOL,
       )
-      if (storageCardExtensionService != null) {
+      storageCardExtensionService?.let {
         // Activate MIFARE Ultralight
         activateProtocol(
             BluebirdContactlessProtocols.MIFARE_ULTRALIGHT.name,
@@ -259,7 +259,7 @@ class MainActivity :
         )
         // Activate MIFARE Classic 1K
         activateProtocol(
-            BluebirdContactlessProtocols.MIFARE_CLASSIC_1K.name,
+            BluebirdContactlessProtocols.MIFARE_CLASSIC.name,
             MIFARE_CLASSIC_1K_LOGICAL_PROTOCOL,
         )
         // Activate ST25/SRT512
@@ -472,7 +472,6 @@ class MainActivity :
         MessageType.RESULT,
         "EnvironmentHolder file:\n$efEnvironmentHolder\n\nEventLog file:\n$eventLog",
     )
-
     addMessage(MessageType.ACTION, "Transaction duration: $duration ms")
   }
 

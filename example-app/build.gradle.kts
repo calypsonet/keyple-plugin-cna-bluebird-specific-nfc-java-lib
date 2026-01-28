@@ -27,7 +27,7 @@ dependencies {
     println("Using private storage card library: ${storageCardLibFile.name}")
     implementation(files(storageCardLibFile))
   } else {
-    println("Using mock storage card library.")
+    println("Using mock storage card library")
     implementation(files("libs/${storageCardLibName}-mock.jar"))
   }
 
@@ -38,7 +38,7 @@ dependencies {
     println("Using private storage card plugin library: ${pluginStorageCardLibFile.name}")
     implementation(files(pluginStorageCardLibFile))
   } else {
-    println("Using mock storage card plugin library.")
+    println("Using mock storage card plugin library")
     implementation(files("libs/${pluginStorageCardLibName}-mock.jar"))
   }
 
