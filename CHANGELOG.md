@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Upgraded
 - Updated `keyple-plugin-storagecard-java-api`: `1.0.0` -> `1.1.0`
 ### Changed
+- Renamed directories `bluebird-plugin` and `bluebird-plugin-mock` to `plugin` and `plugin-mock`
 - Renamed example app package from `org.calypsonet.keyple.plugin.bluebird.example`                                                                                                                           
   to `org.calypsonet.keyple.example.plugin.bluebird` for better consistency
 
@@ -93,7 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.1.1] - 2023-01-10
 ### Added
-- `plugin-mock` module containing an empty mock of the plugin.
+- `bluebird-plugin-mock` module containing an empty mock of the plugin.
 ### Fixed
 - The identification of the protocol currently used to communicate with a card.
 ### Removed
