@@ -90,7 +90,6 @@ internal class BluebirdCardReaderAdapter(
   }
 
   override fun setSkyEcpVasupPayload(vasupPayload: ByteArray) {
-    checkEcpAvailability()
     Assert.getInstance()
         .notNull(vasupPayload, "vasupPayload")
         .isInRange(vasupPayload.size, 5, 20, "vasupPayload")
@@ -98,7 +97,7 @@ internal class BluebirdCardReaderAdapter(
   }
 
   override fun onStartDetection() {
-    logger.debug("Start card scan using polling protocols $pollingProtocols configuration")
+    logger.debug("Start card scan using polling protocols {} configuration", pollingProtocols)
     startScan()
   }
 
@@ -106,11 +105,15 @@ internal class BluebirdCardReaderAdapter(
     logger.debug("Stop card scan")
     var status = nfcReader.stopScan()
     if (status != ResultCode.SUCCESS) {
-      logger.warn("Error while stopping the scan: {$status: ${getNfcErrorMessage(status)}}")
+      logger.warn("Error while stopping the scan: {}: {}", status, getNfcErrorMessage(status))
     }
     status = nfcReader.BBextNfcCarrierOff()
     if (status != ResultCode.SUCCESS) {
-      logger.warn("Error while setting the RF field off: {$status: ${getNfcErrorMessage(status)}}")
+      logger.warn(
+          "Error while setting the RF field off: {}: {}",
+          status,
+          getNfcErrorMessage(status),
+      )
     }
     nfcReader.disconnect()
     nfcReader.enable(false)
@@ -138,7 +141,7 @@ internal class BluebirdCardReaderAdapter(
             .put("type", getTypeFromProtocol(currentProtocol!!))
             .put("uid", HexUtil.toHex(uid))
             .toString()
-    logger.debug("Power on data: $powerOnData")
+    logger.debug("Power on data: {}", powerOnData)
     isCardChannelOpen = true
     loadedKey = null // Clear any previously loaded key
   }
@@ -225,7 +228,6 @@ internal class BluebirdCardReaderAdapter(
           pollingProtocols =
               pollingProtocols or BluebirdContactlessProtocols.MIFARE_CLASSIC.getValue()
       BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP.name -> {
-        checkEcpAvailability()
         check(vasupMode != ExtNfcReader.ECP.Mode.VASUP_B) { "SKY ECP VASUP type B is set" }
         check(vasupPayload != null) { "SKY ECP VASUP payload was not set" }
         vasupMode = ExtNfcReader.ECP.Mode.VASUP_A
@@ -233,7 +235,6 @@ internal class BluebirdCardReaderAdapter(
         pollingProtocols = pollingProtocols or BluebirdContactlessProtocols.ISO_14443_4_A.getValue()
       }
       BluebirdContactlessProtocols.ISO_14443_4_B_SKY_ECP.name -> {
-        checkEcpAvailability()
         check(vasupMode != ExtNfcReader.ECP.Mode.VASUP_A) { "SKY ECP VASUP type A is set" }
         check(vasupPayload != null) { "SKY ECP VASUP payload was not set" }
         vasupMode = ExtNfcReader.ECP.Mode.VASUP_B
@@ -267,7 +268,6 @@ internal class BluebirdCardReaderAdapter(
               pollingProtocols and BluebirdContactlessProtocols.MIFARE_CLASSIC.getValue().inv()
       BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP.name,
       BluebirdContactlessProtocols.ISO_14443_4_B_SKY_ECP.name -> {
-        checkEcpAvailability()
         nfcEcp!!.clearConfiguration()
         vasupMode = null
       }
@@ -294,19 +294,11 @@ internal class BluebirdCardReaderAdapter(
     waitForCardInsertionAutonomousApi = callback
   }
 
-  private fun checkEcpAvailability() {
-    if (Build.VERSION.SDK_INT < MIN_SDK_API_LEVEL_ECP) {
-      throw UnsupportedOperationException(
-          "The terminal Android SDK API level must be higher than $MIN_SDK_API_LEVEL_ECP when using the ECP mode. Current API level is " +
-              Build.VERSION.SDK_INT
-      )
-    }
-  }
-
   @SuppressLint("UnspecifiedRegisterReceiverFlag")
   private fun registerBroadcastReceiverIfNeeded() {
     logger.debug(
-        "Register BB NFC broadcast receiver (already registered? $isBroadcastReceiverRegistered)"
+        "Register BB NFC broadcast receiver (already registered? {})",
+        isBroadcastReceiverRegistered,
     )
     if (isBroadcastReceiverRegistered) {
       return
@@ -322,7 +314,8 @@ internal class BluebirdCardReaderAdapter(
 
   private fun unregisterBroadcastReceiver() {
     logger.debug(
-        "Unregister BB NFC broadcast receiver (already unregistered? ${!isBroadcastReceiverRegistered})"
+        "Unregister BB NFC broadcast receiver (already unregistered? {})",
+        !isBroadcastReceiverRegistered,
     )
     if (!isBroadcastReceiverRegistered) {
       return
@@ -337,7 +330,11 @@ internal class BluebirdCardReaderAdapter(
 
     var status = nfcReader.BBextNfcCarrierOn()
     if (status != ResultCode.SUCCESS) {
-      logger.error("Error while setting the RF field on: {$status: ${getNfcErrorMessage(status)}}")
+      logger.error(
+          "Error while setting the RF field on: {}: {}",
+          status,
+          getNfcErrorMessage(status),
+      )
       return
     }
 
@@ -349,7 +346,7 @@ internal class BluebirdCardReaderAdapter(
       }
     }
     if (status != ResultCode.SUCCESS) {
-      logger.error("Card scan error: {$status: ${getNfcErrorMessage(status)}}")
+      logger.error("Card scan error: {}: {}", status, getNfcErrorMessage(status))
       return
     }
 
@@ -363,7 +360,7 @@ internal class BluebirdCardReaderAdapter(
           BluebirdContactlessProtocols.fromValue(
               intent.getIntExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_TYPE_KEY, -1)
           )
-      logger.debug("Discovered tag with protocol: $currentProtocol")
+      logger.debug("Discovered tag with protocol: {}", currentProtocol)
       // the following UID may be overwritten later according to the card tech
       uid = intent.getByteArrayExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_DATA_KEY) as ByteArray
       waitForCardInsertionAutonomousApi.onCardInserted()
@@ -385,7 +382,7 @@ internal class BluebirdCardReaderAdapter(
         val status = nfcReader.connect()
         // If reconnection fails, the card has been removed
         if (status < 0) {
-          logger.debug("Card removed: reconnection failed with status $status")
+          logger.debug("Card removed: reconnection failed with status {}", status)
           isWaitingForCardRemoval = false
           break
         }
