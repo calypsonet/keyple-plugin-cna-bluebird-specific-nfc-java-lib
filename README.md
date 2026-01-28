@@ -102,7 +102,7 @@ Pass the provider when creating the plugin factory.
 
 #### 2. Using the loadKey() Method
 
-Load keys programmatically before authentication using `prepareMifareClassicLoadKey`.
+Load keys programmatically when using `prepareMifareClassicAuthenticate`.
 
 **Important Security Notes:**
 - The example app uses a default factory key (`FFFFFFFFFFFF`) for demonstration purposes only
