@@ -138,7 +138,6 @@ class MainActivity :
       messageDisplayAdapter.notifyItemInserted(messages.lastIndex)
       binding.messageRecyclerView.smoothScrollToPosition(messages.size - 1)
     }
-    Timber.d("${type.name}: %s", message)
   }
 
   private fun buildWaitingForCardPresentationMessage(): String {
@@ -168,7 +167,7 @@ class MainActivity :
   }
 
   private fun checkSamAccessPermission() {
-    Timber.d("Checking SAM access permission")
+    Timber.i("Checking SAM access permission")
     val requestPermissionLauncher =
         registerForActivityResult(RequestPermission()) { isGranted ->
           if (isGranted) {
@@ -183,7 +182,7 @@ class MainActivity :
             )
           }
         }
-    Timber.d("Showing permission request dialog")
+    Timber.i("Showing permission request dialog")
     showAlertDialogWithAction(
         "SAM Access Permission Required",
         "Please grant access to the SAM. This permission request appears only on the first use, and the application must be restarted after granting it.",

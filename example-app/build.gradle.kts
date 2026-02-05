@@ -52,7 +52,7 @@ dependencies {
     isChanging = true
   }
   implementation("org.eclipse.keyple:keyple-common-java-api")
-  implementation("org.eclipse.keyple:keyple-util-java-lib:2.5.0-SNAPSHOT") { isChanging = true }
+  implementation("org.eclipse.keyple:keyple-util-java-lib:2.4.1")
   implementation("org.eclipse.keyple:keyple-service-java-lib")
   implementation("org.eclipse.keyple:keyple-card-calypso-java-lib")
   implementation("org.eclipse.keyple:keyple-plugin-storagecard-java-api")
@@ -69,10 +69,15 @@ dependencies {
   // Coroutines
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-  // Logging
+  // Logging libraries used in the project:
+  // - SLF4J API provides a common logging interface for the app and third-party libraries (e.g.,
+  //   Keyple).
+  // - slf4j-timber bridges SLF4J calls to Timber for Android logging.
+  // - Timber is used as the primary Android logging framework, offering lightweight and flexible
+  //   logging.
+  implementation("org.slf4j:slf4j-api:1.7.36")
+  implementation("com.arcao:slf4j-timber:3.1@aar")
   implementation("com.jakewharton.timber:timber:5.0.1")
-  implementation("org.slf4j:slf4j-api:1.7.32")
-  implementation("uk.uuid.slf4j:slf4j-android:1.7.32-0")
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -106,8 +111,18 @@ android {
     viewBinding = true
   }
   buildTypes {
+    // Configuration for the debug build variant:
+    // - Minification, resource shrinking, and ProGuard rules are enabled here as an example
+    //   to test release-like performance and optimizations during development.
+    // - To see full, unoptimized logs during debug, this block can be commented out or adjusted.
+    getByName("debug") {
+      isMinifyEnabled = true
+      isShrinkResources = true
+      proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+    }
     getByName("release") {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
   }

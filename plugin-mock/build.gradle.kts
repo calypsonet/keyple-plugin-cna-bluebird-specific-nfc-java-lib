@@ -24,11 +24,13 @@ dependencies {
   implementation("org.eclipse.keyple:keyple-common-java-api:2.0.2")
   implementation("org.eclipse.keyple:keyple-plugin-java-api:2.3.2")
   api("org.eclipse.keyple:keyple-plugin-storagecard-java-api:1.1.0-SNAPSHOT") { isChanging = true }
-  implementation("org.eclipse.keyple:keyple-util-java-lib:2.5.0-SNAPSHOT") { isChanging = true }
+  implementation("org.eclipse.keyple:keyple-util-java-lib:2.4.1")
   // End Keyple configuration
   // Kotlin
   implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.0")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+  // Logging
+  compileOnly("org.slf4j:slf4j-api:1.7.36")
 }
 
 ///////////////////////////////////////////////////////////////////////////////

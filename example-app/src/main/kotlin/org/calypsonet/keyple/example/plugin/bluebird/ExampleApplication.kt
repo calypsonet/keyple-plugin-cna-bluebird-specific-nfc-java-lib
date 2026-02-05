@@ -19,6 +19,8 @@ class ExampleApplication : Application() {
     super.onCreate()
     if (BuildConfig.DEBUG) {
       Timber.plant(Timber.DebugTree())
+    } else {
+      Timber.plant(ReleaseTree())
     }
   }
 }

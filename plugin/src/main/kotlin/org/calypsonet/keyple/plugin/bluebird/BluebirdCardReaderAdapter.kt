@@ -36,8 +36,8 @@ import org.eclipse.keyple.core.plugin.storagecard.internal.spi.ApduInterpreterFa
 import org.eclipse.keyple.core.plugin.storagecard.internal.spi.ApduInterpreterSpi
 import org.eclipse.keyple.core.util.Assert
 import org.eclipse.keyple.core.util.HexUtil
-import org.eclipse.keyple.core.util.logging.LoggerFactory
 import org.json.JSONObject
+import org.slf4j.LoggerFactory
 
 internal class BluebirdCardReaderAdapter(
     private val activity: Activity,
@@ -54,7 +54,6 @@ internal class BluebirdCardReaderAdapter(
 
   private companion object {
     private val logger = LoggerFactory.getLogger(BluebirdCardReaderAdapter::class.java)
-    private const val MIN_SDK_API_LEVEL_ECP = 28
     private const val MIFARE_KEY_A: Byte = 0x60
     private const val MIFARE_KEY_B: Byte = 0x61
   }
