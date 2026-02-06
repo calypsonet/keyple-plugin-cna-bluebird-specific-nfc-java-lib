@@ -21,7 +21,7 @@ dependencies {
   implementation(project(path = ":plugin"))
   // Storage card specific components
   // Conditional dependency for the storage card library
-  val storageCardLibName = "keyple-card-cna-storagecard-java-lib-2.2.0-SNAPSHOT"
+  val storageCardLibName = "keyple-card-cna-storagecard-java-lib-2.2.0"
   val storageCardLibFile = file("libs/${storageCardLibName}.jar")
   if (storageCardLibFile.exists()) {
     println("Using private storage card library: ${storageCardLibFile.name}")
@@ -32,7 +32,7 @@ dependencies {
   }
 
   // Conditional dependency for the storage card plugin library
-  val pluginStorageCardLibName = "keyple-plugin-cna-storagecard-java-lib-1.1.0-SNAPSHOT"
+  val pluginStorageCardLibName = "keyple-plugin-cna-storagecard-java-lib-1.1.0"
   val pluginStorageCardLibFile = file("libs/${pluginStorageCardLibName}.jar")
   if (pluginStorageCardLibFile.exists()) {
     println("Using private storage card plugin library: ${pluginStorageCardLibFile.name}")
@@ -48,9 +48,7 @@ dependencies {
   implementation("org.eclipse.keypop:keypop-reader-java-api")
   implementation("org.eclipse.keypop:keypop-calypso-card-java-api")
   implementation("org.eclipse.keypop:keypop-calypso-crypto-legacysam-java-api")
-  implementation("org.eclipse.keypop:keypop-storagecard-java-api:1.1.0-SNAPSHOT") {
-    isChanging = true
-  }
+  implementation("org.eclipse.keypop:keypop-storagecard-java-api:1.1.0")
   implementation("org.eclipse.keyple:keyple-common-java-api")
   implementation("org.eclipse.keyple:keyple-util-java-lib:2.4.1")
   implementation("org.eclipse.keyple:keyple-service-java-lib")
