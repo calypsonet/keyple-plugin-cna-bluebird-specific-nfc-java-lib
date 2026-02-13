@@ -25,15 +25,11 @@ jobs:
       - name: Update permissions for gradlew
         run: chmod +x ./gradlew
 
-      - name: Set repository URL environment variable
-        run: |
-          REPO_NAME=${GITHUB_REPOSITORY#*/}
-          echo "ORG_GRADLE_PROJECT_githubPackagesRegistryURL=https://maven.pkg.github.com/${{ github.repository_owner }}/$REPO_NAME" >> $GITHUB_ENV
-
       - name: Build artifacts and publish to GitHub Packages
         env:
           GPR_USER: github-actions
           GPR_KEY: ${{ secrets.CALYPSONET_PACKAGES_TOKEN }}
+          ORG_GRADLE_PROJECT_githubPackagesRegistryURL: https://maven.pkg.github.com/${{ github.repository }}
           ORG_GRADLE_PROJECT_githubPackagesRegistryUsername: ${{ github.actor }}
           ORG_GRADLE_PROJECT_githubPackagesRegistryPassword: ${{ secrets.PACKAGE_PUBLICATION_TOKEN }}
           ORG_GRADLE_PROJECT_releaseTag: ${{ github.event.release.tag_name }}
