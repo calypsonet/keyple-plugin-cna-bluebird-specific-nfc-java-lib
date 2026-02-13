@@ -9,6 +9,10 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   java-test:
     runs-on: ubuntu-latest
@@ -32,4 +36,7 @@ jobs:
 
       - name: Build and Test Mock
         working-directory: .
+        env:
+          GPR_USER: ${{ github.actor }}
+          GPR_KEY: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew plugin-mock:build --info --stacktrace
