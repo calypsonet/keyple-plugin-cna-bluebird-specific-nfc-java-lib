@@ -36,8 +36,8 @@ jobs:
 
       - name: Build artifacts and publish to GitHub Packages
         env:
-          GPR_USER: ${{ github.actor }}
-          GPR_KEY: ${{ secrets.GITHUB_TOKEN }}
+          GPR_USER: github-actions
+          GPR_KEY: ${{ secrets.CALYPSONET_PACKAGES_TOKEN }}
           ORG_GRADLE_PROJECT_githubPackagesRegistryUsername: ${{ github.actor }}
           ORG_GRADLE_PROJECT_githubPackagesRegistryPassword: ${{ secrets.PACKAGE_PUBLICATION_TOKEN }}
           ORG_GRADLE_PROJECT_releaseTag: ${{ github.event.release.tag_name }}

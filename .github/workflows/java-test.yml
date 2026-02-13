@@ -37,6 +37,6 @@ jobs:
       - name: Build and Test Mock
         working-directory: .
         env:
-          GPR_USER: ${{ github.actor }}
-          GPR_KEY: ${{ secrets.GITHUB_TOKEN }}
+          GPR_USER: github-actions
+          GPR_KEY: ${{ secrets.CALYPSONET_PACKAGES_TOKEN }}
         run: ./gradlew plugin-mock:build --info --stacktrace
