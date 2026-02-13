@@ -21,5 +21,13 @@ dependencyResolutionManagement {
     mavenCentral()
     mavenLocal()
     maven(url = "https://central.sonatype.com/repository/maven-snapshots")
+    maven {
+      name = "GitHubPrivateArtifacts"
+      url = uri("https://maven.pkg.github.com/calypsonet/private-java-packages")
+      credentials {
+        username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GPR_USER")
+        password = providers.gradleProperty("gpr.key").orNull ?: System.getenv("GPR_KEY")
+      }
+    }
   }
 }

@@ -96,12 +96,16 @@ internal class BluebirdCardReaderAdapter(
   }
 
   override fun onStartDetection() {
-    logger.debug("Start card scan using polling protocols {} configuration", pollingProtocols)
+    if (logger.isDebugEnabled) {
+      logger.debug("Start card scan using polling protocols {} configuration", pollingProtocols)
+    }
     startScan()
   }
 
   override fun onStopDetection() {
-    logger.debug("Stop card scan")
+    if (logger.isDebugEnabled) {
+      logger.debug("Stop card scan")
+    }
     var status = nfcReader.stopScan()
     if (status != ResultCode.SUCCESS) {
       logger.warn("Error while stopping the scan: {}: {}", status, getNfcErrorMessage(status))
@@ -140,7 +144,9 @@ internal class BluebirdCardReaderAdapter(
             .put("type", getTypeFromProtocol(currentProtocol!!))
             .put("uid", HexUtil.toHex(uid))
             .toString()
-    logger.debug("Power on data: {}", powerOnData)
+    if (logger.isDebugEnabled) {
+      logger.debug("Power on data: {}", powerOnData)
+    }
     isCardChannelOpen = true
     loadedKey = null // Clear any previously loaded key
   }
@@ -295,10 +301,12 @@ internal class BluebirdCardReaderAdapter(
 
   @SuppressLint("UnspecifiedRegisterReceiverFlag")
   private fun registerBroadcastReceiverIfNeeded() {
-    logger.debug(
-        "Register BB NFC broadcast receiver (already registered? {})",
-        isBroadcastReceiverRegistered,
-    )
+    if (logger.isDebugEnabled) {
+      logger.debug(
+          "Register BB NFC broadcast receiver (already registered? {})",
+          isBroadcastReceiverRegistered,
+      )
+    }
     if (isBroadcastReceiverRegistered) {
       return
     }
@@ -312,10 +320,12 @@ internal class BluebirdCardReaderAdapter(
   }
 
   private fun unregisterBroadcastReceiver() {
-    logger.debug(
-        "Unregister BB NFC broadcast receiver (already unregistered? {})",
-        !isBroadcastReceiverRegistered,
-    )
+    if (logger.isDebugEnabled) {
+      logger.debug(
+          "Unregister BB NFC broadcast receiver (already unregistered? {})",
+          !isBroadcastReceiverRegistered,
+      )
+    }
     if (!isBroadcastReceiverRegistered) {
       return
     }
@@ -359,7 +369,9 @@ internal class BluebirdCardReaderAdapter(
           BluebirdContactlessProtocols.fromValue(
               intent.getIntExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_TYPE_KEY, -1)
           )
-      logger.debug("Discovered tag with protocol: {}", currentProtocol)
+      if (logger.isDebugEnabled) {
+        logger.debug("Discovered tag with protocol: {}", currentProtocol)
+      }
       // the following UID may be overwritten later according to the card tech
       uid = intent.getByteArrayExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_DATA_KEY) as ByteArray
       waitForCardInsertionAutonomousApi.onCardInserted()
@@ -381,12 +393,16 @@ internal class BluebirdCardReaderAdapter(
         val status = nfcReader.connect()
         // If reconnection fails, the card has been removed
         if (status < 0) {
-          logger.debug("Card removed: reconnection failed with status {}", status)
+          if (logger.isDebugEnabled) {
+            logger.debug("Card removed: reconnection failed with status {}", status)
+          }
           isWaitingForCardRemoval = false
           break
         }
         // If reconnection succeeds, the card is still present
-        logger.debug("Card still present: reconnection succeeded")
+        if (logger.isDebugEnabled) {
+          logger.debug("Card still present: reconnection succeeded")
+        }
       }
     } finally {
       if (nfcReader.isConnected) {
