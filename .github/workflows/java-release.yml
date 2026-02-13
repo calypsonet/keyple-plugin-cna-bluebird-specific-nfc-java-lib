@@ -41,7 +41,7 @@ jobs:
           ORG_GRADLE_PROJECT_githubPackagesRegistryUsername: ${{ github.actor }}
           ORG_GRADLE_PROJECT_githubPackagesRegistryPassword: ${{ secrets.PACKAGE_PUBLICATION_TOKEN }}
           ORG_GRADLE_PROJECT_releaseTag: ${{ github.event.release.tag_name }}
-        run: ./gradlew build publish
+        run: ./gradlew build :plugin:publish
 
       - name: (Optional) Collect artifacts for release page
         run: |
