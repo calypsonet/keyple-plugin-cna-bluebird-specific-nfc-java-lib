@@ -39,12 +39,12 @@ jobs:
           ORG_GRADLE_PROJECT_releaseTag: ${{ github.event.release.tag_name }}
         run: ./gradlew build :plugin:publish
 
-      - name: (Optional) Collect artifacts for release page
+      - name: Collect mock artifact for GitHub release
         run: |
           mkdir -p release-artifacts
           cp plugin-mock/build/outputs/aar/*-release-mock.aar release-artifacts/ || true
 
-      - name: (Optional) Upload artifacts to GitHub release
+      - name: Upload mock artifact to GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: release-artifacts/*
