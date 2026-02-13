@@ -4,7 +4,6 @@ on:
   release:
     types:
       - published
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -24,10 +23,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Update permissions for gradlew
-        run: chmod +x ./gradlew ./.github/scripts/*.sh
-
-      - name: Check version consistency
-        run: ./.github/scripts/check_version.sh "${{ github.event.release.tag_name }}"
+        run: chmod +x ./gradlew
 
       - name: Set repository URL environment variable
         run: |
