@@ -32,4 +32,4 @@ jobs:
 
       - name: Build and Test Mock
         working-directory: .
-        run: ./gradlew bluebird-plugin-mock:build --info --stacktrace
+        run: ./gradlew plugin-mock:build --info --stacktrace

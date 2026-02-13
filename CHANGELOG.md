@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added `MIFARE_CLASSIC` protocol support for NXP Mifare Classic cards
+- Added `KeyProvider` SPI interface for dynamic key provisioning
+- Added `keyProvider` optional parameter to `BluebirdPluginFactoryProvider.provideFactory()` method
+### Upgraded
+- Updated `keyple-plugin-storagecard-java-api`: `1.0.0` -> `1.1.0`
+### Changed
+- Renamed directories `bluebird-plugin` and `bluebird-plugin-mock` to `plugin` and `plugin-mock`
+- Renamed example app package from `org.calypsonet.keyple.plugin.bluebird.example`                                                                                                                           
+  to `org.calypsonet.keyple.example.plugin.bluebird` for better consistency
 
 ## [3.1.2] - 2025-09-08
 ### Fixed
