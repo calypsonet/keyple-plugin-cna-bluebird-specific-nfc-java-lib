@@ -200,7 +200,7 @@ afterEvaluate {
     publications {
       create<MavenPublication>("mavenJava") {
         from(components["release"])
-        artifactId = rootProject.name
+        artifactId = "${rootProject.name}-mock"
         artifact(tasks["sourcesJar"])
         artifact(tasks["javadocJar"])
         pom {
@@ -250,6 +250,16 @@ afterEvaluate {
           credentials {
             username = project.property("sonatypeUsername") as String
             password = project.property("sonatypePassword") as String
+          }
+        }
+      }
+      maven {
+        name = "GitHubPackages"
+        if (project.hasProperty("githubPackagesRegistryURL")) {
+          url = uri(project.property("githubPackagesRegistryURL") as String)
+          credentials {
+            username = project.property("githubPackagesRegistryUsername") as String
+            password = project.property("githubPackagesRegistryPassword") as String
           }
         }
       }
