@@ -23,13 +23,13 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build artifacts
-        run: ./gradlew bluebird-plugin-mock:build
+        run: ./gradlew plugin-mock:build
 
       - name: Collect artifacts
         run: |
           mkdir -p release-artifacts
           # Mock AAR
-          cp bluebird-plugin-mock/build/outputs/aar/*-release-mock.aar release-artifacts/ || true
+          cp plugin-mock/build/outputs/aar/*-release-mock.aar release-artifacts/ || true
 
       - name: Upload artifacts to GitHub release
         uses: softprops/action-gh-release@v2
