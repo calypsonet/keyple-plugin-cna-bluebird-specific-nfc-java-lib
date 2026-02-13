@@ -22,7 +22,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Update permissions for gradlew
+      - name: Update permissions
         run: chmod +x ./gradlew
 
       - name: Build artifacts and publish to GitHub Packages
