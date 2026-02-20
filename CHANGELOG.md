@@ -13,8 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `keyple-plugin-storagecard-java-api`: `1.0.0` -> `1.1.0`
 ### Changed
 - Renamed directories `bluebird-plugin` and `bluebird-plugin-mock` to `plugin` and `plugin-mock`
-- Renamed example app package from `org.calypsonet.keyple.plugin.bluebird.example`                                                                                                                           
+- Renamed example app package from `org.calypsonet.keyple.plugin.bluebird.example`
   to `org.calypsonet.keyple.example.plugin.bluebird` for better consistency
+- Lowered minimum Android SDK from API 28 to 26
+- Optimized logging performance by guarding `debug` log statements with `isDebugEnabled` checks
 
 ## [3.1.2] - 2025-09-08
 ### Fixed
@@ -127,6 +129,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This is the initial release.
 
 [unreleased]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.1.2...HEAD
+
 [3.1.2]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.1.1...3.1.2
 [3.1.1]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.1.0...3.1.1
 [3.1.0]: https://github.com/calypsonet/keyple-plugin-cna-bluebird-specific-nfc-java-lib/compare/3.0.0...3.1.0
