@@ -13,8 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `keyple-plugin-storagecard-java-api`: `1.0.0` -> `1.1.0`
 ### Changed
 - Renamed directories `bluebird-plugin` and `bluebird-plugin-mock` to `plugin` and `plugin-mock`
-- Renamed example app package from `org.calypsonet.keyple.plugin.bluebird.example`                                                                                                                           
+- Renamed example app package from `org.calypsonet.keyple.plugin.bluebird.example`
   to `org.calypsonet.keyple.example.plugin.bluebird` for better consistency
+- Lowered minimum Android SDK from API 28 to 26
+- Optimized logging performance by guarding `debug` log statements with `isDebugEnabled` checks
 
 ## [3.1.3] - 2026-07-03
 ### Fixed
