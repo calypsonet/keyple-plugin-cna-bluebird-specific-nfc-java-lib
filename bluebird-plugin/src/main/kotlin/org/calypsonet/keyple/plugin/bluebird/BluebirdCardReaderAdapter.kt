@@ -61,7 +61,6 @@ internal class BluebirdCardReaderAdapter(
       if (Build.VERSION.SDK_INT >= MIN_SDK_API_LEVEL_ECP) nfcReader.ecp else null
 
   private var isBroadcastReceiverRegistered: Boolean = false
-  private var isCardChannelOpen: Boolean = false
   private var isWaitingForCardRemoval = false
   private var currentProtocol: BluebirdContactlessProtocols? = null
   private var currentPowerOnData: String? = null
@@ -135,7 +134,6 @@ internal class BluebirdCardReaderAdapter(
             .put("uid", HexUtil.toHex(uid))
             .toString()
     Timber.d("Power on data: $powerOnData")
-    isCardChannelOpen = true
   }
 
   private fun getTypeFromProtocol(protocol: BluebirdContactlessProtocols): String {
@@ -151,11 +149,11 @@ internal class BluebirdCardReaderAdapter(
   }
 
   override fun closePhysicalChannel() {
-    isCardChannelOpen = false
+    // no-op
   }
 
   override fun isPhysicalChannelOpen(): Boolean {
-    return isCardChannelOpen
+    return nfcReader.isConnected
   }
 
   override fun checkCardPresence(): Boolean {
@@ -343,7 +341,6 @@ internal class BluebirdCardReaderAdapter(
 
   override fun onReceive(context: Context, intent: Intent) {
     if (ExtNfcReader.Broadcast.EXTNFC_DETECTED_ACTION == intent.action) {
-      isCardChannelOpen = false
       currentProtocol =
           BluebirdContactlessProtocols.fromValue(
               intent.getIntExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_TYPE_KEY, -1))
