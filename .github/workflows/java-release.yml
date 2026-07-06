@@ -4,7 +4,6 @@ on:
   release:
     types:
       - published
-  workflow_dispatch:
 
 jobs:
   build-and-attach:
@@ -20,7 +19,12 @@ jobs:
           distribution: 'temurin'
 
       - name: Update permissions
-        run: chmod +x ./gradlew
+        working-directory: .
+        run: chmod +x ./gradlew ./.github/scripts/*.sh
+
+      - name: Check version
+        working-directory: .
+        run: ./.github/scripts/check_version.sh "${{ github.event.release.tag_name }}"
 
       - name: Build artifacts
         run: ./gradlew plugin-mock:build
