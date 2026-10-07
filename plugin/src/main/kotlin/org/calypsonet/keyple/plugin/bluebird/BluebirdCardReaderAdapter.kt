@@ -378,28 +378,51 @@ internal class BluebirdCardReaderAdapter(
   override fun waitForCardRemoval() {
     if (isWaitingForCardRemoval || !nfcReader.isConnected) return
     isWaitingForCardRemoval = true
+    if (logger.isDebugEnabled) {
+      logger.debug("Starting optimized card removal monitoring...")
+    }
+
     try {
       while (isWaitingForCardRemoval) {
-        // Disconnect from the card
-        nfcReader.disconnect()
-        // Wait for isConnected to become false
-        while (nfcReader.isConnected) {
-          runBlocking { delay(10) }
-        }
-        // Try to reconnect
-        val status = nfcReader.connect()
-        // If reconnection fails, the card has been removed
-        if (status < 0) {
-          if (logger.isDebugEnabled) {
-            logger.debug("Card removed: reconnection failed with status {}", status)
+        var isPresent = false
+
+        try {
+          when (currentProtocol) {
+            BluebirdContactlessProtocols.MIFARE_ULTRALIGHT,
+            BluebirdContactlessProtocols.MIFARE_CLASSIC -> {
+              val response = nfcReader.BBextNfcMifareRead(0.toByte())
+              if (response != null && response.isNotEmpty() && response[0] == 0.toByte()) {
+                isPresent = true
+              }
+            }
+            BluebirdContactlessProtocols.ST25_SRT512 -> {
+              val response = nfcReader.BBextNfcSRT512GetUID()
+              if (response != null && response.isNotEmpty() && response[0] == 0.toByte()) {
+                isPresent = true
+              }
+            }
+            else -> {
+              val res = nfcReader.transmit(byteArrayOf(0x00.toByte()))
+              if (res != null && res.mResult == ResultCode.SUCCESS) {
+                isPresent = true
+              }
+            }
           }
-          isWaitingForCardRemoval = false
+        } catch (e: Exception) {
+          if (logger.isDebugEnabled) {
+            logger.debug("Presence check failed: {}", e.message)
+          }
+          isPresent = false
+        }
+
+        if (!isPresent) {
+          if (logger.isDebugEnabled) {
+            logger.debug("Card removal detected.")
+          }
           break
         }
-        // If reconnection succeeds, the card is still present
-        if (logger.isDebugEnabled) {
-          logger.debug("Card still present: reconnection succeeded")
-        }
+
+        runBlocking { delay(250) }
       }
     } finally {
       if (nfcReader.isConnected) {
