@@ -20,6 +20,8 @@ import android.content.IntentFilter
 import android.os.Build
 import com.bluebird.extnfc.ExtNfcReader
 import com.bluebird.extnfc.ExtNfcReader.ResultCode
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.calypsonet.keyple.plugin.bluebird.spi.KeyProvider
@@ -56,14 +58,22 @@ internal class BluebirdCardReaderAdapter(
     private val logger = LoggerFactory.getLogger(BluebirdCardReaderAdapter::class.java)
     private const val MIFARE_KEY_A: Byte = 0x60
     private const val MIFARE_KEY_B: Byte = 0x61
+    private const val CARD_REMOVAL_POLLING_INTERVAL_MS = 250L
+    private const val STOP_WAIT_FOR_CARD_REMOVAL_TIMEOUT_MS = 3000L
   }
 
   @SuppressLint("WrongConstant")
   private val nfcReader: ExtNfcReader =
       activity.getSystemService(ExtNfcReader.READER_SERVICE_NAME) as ExtNfcReader
   private val nfcEcp: ExtNfcReader.ECP? = nfcReader.ecp
+
+  // The native libextnfc library is not thread-safe: all calls to nfcReader must be serialized
+  // through this lock (card removal monitoring thread vs. Keyple/main thread).
+  private val nfcLock = Any()
   private var isBroadcastReceiverRegistered: Boolean = false
-  private var isWaitingForCardRemoval = false
+  @Volatile private var isWaitingForCardRemoval = false
+  @Volatile private var cardRemovalLoopExitLatch: CountDownLatch? = null
+  @Volatile private var cardRemovalThread: Thread? = null
   private var currentProtocol: BluebirdContactlessProtocols? = null
   private var currentPowerOnData: String? = null
   private var pollingProtocols: Int = 0
@@ -105,36 +115,48 @@ internal class BluebirdCardReaderAdapter(
     if (logger.isDebugEnabled) {
       logger.debug("Stop card scan")
     }
-    var status = nfcReader.stopScan()
-    if (status != ResultCode.SUCCESS) {
-      logger.warn("Error while stopping the scan: {}: {}", status, getNfcErrorMessage(status))
+    // Make sure no presence check is in flight before turning the RF field off.
+    stopWaitForCardRemoval()
+    synchronized(nfcLock) {
+      try {
+        var status = nfcReader.stopScan()
+        if (status != ResultCode.SUCCESS) {
+          logger.warn("Error while stopping the scan: {}: {}", status, getNfcErrorMessage(status))
+        }
+        status = nfcReader.BBextNfcCarrierOff()
+        if (status != ResultCode.SUCCESS) {
+          logger.warn(
+              "Error while setting the RF field off: {}: {}",
+              status,
+              getNfcErrorMessage(status),
+          )
+        }
+        nfcReader.disconnect()
+        nfcReader.enable(false)
+      } catch (e: Exception) {
+        logger.warn("Error while stopping the NFC reader: {}", e.message)
+      }
     }
-    status = nfcReader.BBextNfcCarrierOff()
-    if (status != ResultCode.SUCCESS) {
-      logger.warn(
-          "Error while setting the RF field off: {}: {}",
-          status,
-          getNfcErrorMessage(status),
-      )
-    }
-    nfcReader.disconnect()
-    nfcReader.enable(false)
     unregisterBroadcastReceiver()
   }
 
   override fun getName(): String = BluebirdConstants.CARD_READER_NAME
 
   override fun openPhysicalChannel() {
-    val status = nfcReader.connect()
-    if (status < 0) {
-      throw CardIOException("Open physical channel error: {$status: ${getNfcErrorMessage(status)}}")
-    }
+    synchronized(nfcLock) {
+      val status = nfcReader.connect()
+      if (status < 0) {
+        throw CardIOException(
+            "Open physical channel error: {$status: ${getNfcErrorMessage(status)}}"
+        )
+      }
 
-    if (currentProtocol == BluebirdContactlessProtocols.ST25_SRT512) {
-      // specific case for STM SRT512/ST25
-      val response = nfcReader.BBextNfcSRT512GetUID()
-      if (response[0] == 0.toByte()) {
-        uid = response.copyOfRange(1, 9)
+      if (currentProtocol == BluebirdContactlessProtocols.ST25_SRT512) {
+        // specific case for STM SRT512/ST25
+        val response = nfcReader.BBextNfcSRT512GetUID()
+        if (response[0] == 0.toByte()) {
+          uid = response.copyOfRange(1, 9)
+        }
       }
     }
 
@@ -167,7 +189,7 @@ internal class BluebirdCardReaderAdapter(
   }
 
   override fun isPhysicalChannelOpen(): Boolean {
-    return nfcReader.isConnected
+    return synchronized(nfcLock) { nfcReader.isConnected }
   }
 
   override fun checkCardPresence(): Boolean {
@@ -195,9 +217,16 @@ internal class BluebirdCardReaderAdapter(
   }
 
   override fun onUnregister() {
-    if (nfcReader.isEnabled) {
-      nfcReader.disconnect()
-      nfcReader.enable(false)
+    stopWaitForCardRemoval()
+    synchronized(nfcLock) {
+      try {
+        if (nfcReader.isEnabled) {
+          nfcReader.disconnect()
+          nfcReader.enable(false)
+        }
+      } catch (e: Exception) {
+        logger.warn("Error while releasing the NFC reader: {}", e.message)
+      }
     }
     unregisterBroadcastReceiver()
   }
@@ -327,34 +356,40 @@ internal class BluebirdCardReaderAdapter(
     if (!isBroadcastReceiverRegistered) {
       return
     }
-    activity.unregisterReceiver(this)
+    try {
+      activity.unregisterReceiver(this)
+    } catch (e: IllegalArgumentException) {
+      logger.warn("Broadcast receiver was not registered: {}", e.message)
+    }
     isBroadcastReceiverRegistered = false
   }
 
   private fun startScan() {
-    nfcReader.enable(true)
-    nfcReader.cardTypeForScan = pollingProtocols
+    synchronized(nfcLock) {
+      nfcReader.enable(true)
+      nfcReader.cardTypeForScan = pollingProtocols
 
-    var status = nfcReader.BBextNfcCarrierOn()
-    if (status != ResultCode.SUCCESS) {
-      logger.error(
-          "Error while setting the RF field on: {}: {}",
-          status,
-          getNfcErrorMessage(status),
-      )
-      return
-    }
-
-    status = nfcReader.startScan()
-    if (status == ResultCode.ERROR_ALREADY_ON_SCANNING) {
-      status = nfcReader.stopScan()
-      if (status == ResultCode.SUCCESS) {
-        status = nfcReader.startScan()
+      var status = nfcReader.BBextNfcCarrierOn()
+      if (status != ResultCode.SUCCESS) {
+        logger.error(
+            "Error while setting the RF field on: {}: {}",
+            status,
+            getNfcErrorMessage(status),
+        )
+        return
       }
-    }
-    if (status != ResultCode.SUCCESS) {
-      logger.error("Card scan error: {}: {}", status, getNfcErrorMessage(status))
-      return
+
+      status = nfcReader.startScan()
+      if (status == ResultCode.ERROR_ALREADY_ON_SCANNING) {
+        status = nfcReader.stopScan()
+        if (status == ResultCode.SUCCESS) {
+          status = nfcReader.startScan()
+        }
+      }
+      if (status != ResultCode.SUCCESS) {
+        logger.error("Card scan error: {}: {}", status, getNfcErrorMessage(status))
+        return
+      }
     }
 
     registerBroadcastReceiverIfNeeded()
@@ -376,7 +411,10 @@ internal class BluebirdCardReaderAdapter(
   }
 
   override fun waitForCardRemoval() {
-    if (isWaitingForCardRemoval || !nfcReader.isConnected) return
+    if (isWaitingForCardRemoval || !isPhysicalChannelOpen()) return
+    val latch = CountDownLatch(1)
+    cardRemovalLoopExitLatch = latch
+    cardRemovalThread = Thread.currentThread()
     isWaitingForCardRemoval = true
     if (logger.isDebugEnabled) {
       logger.debug("Starting optimized card removal monitoring...")
@@ -384,36 +422,7 @@ internal class BluebirdCardReaderAdapter(
 
     try {
       while (isWaitingForCardRemoval) {
-        var isPresent = false
-
-        try {
-          when (currentProtocol) {
-            BluebirdContactlessProtocols.MIFARE_ULTRALIGHT,
-            BluebirdContactlessProtocols.MIFARE_CLASSIC -> {
-              val response = nfcReader.BBextNfcMifareRead(0.toByte())
-              if (response != null && response.isNotEmpty() && response[0] == 0.toByte()) {
-                isPresent = true
-              }
-            }
-            BluebirdContactlessProtocols.ST25_SRT512 -> {
-              val response = nfcReader.BBextNfcSRT512GetUID()
-              if (response != null && response.isNotEmpty() && response[0] == 0.toByte()) {
-                isPresent = true
-              }
-            }
-            else -> {
-              val res = nfcReader.transmit(byteArrayOf(0x00.toByte()))
-              if (res != null && res.mResult == ResultCode.SUCCESS) {
-                isPresent = true
-              }
-            }
-          }
-        } catch (e: Exception) {
-          if (logger.isDebugEnabled) {
-            logger.debug("Presence check failed: {}", e.message)
-          }
-          isPresent = false
-        }
+        val isPresent = synchronized(nfcLock) { isWaitingForCardRemoval && isCardPresent() }
 
         if (!isPresent) {
           if (logger.isDebugEnabled) {
@@ -422,18 +431,66 @@ internal class BluebirdCardReaderAdapter(
           break
         }
 
-        runBlocking { delay(250) }
+        runBlocking { delay(CARD_REMOVAL_POLLING_INTERVAL_MS) }
       }
     } finally {
-      if (nfcReader.isConnected) {
-        nfcReader.disconnect()
+      synchronized(nfcLock) {
+        try {
+          if (nfcReader.isConnected) {
+            nfcReader.disconnect()
+          }
+        } catch (e: Exception) {
+          logger.warn("Error while disconnecting the card: {}", e.message)
+        }
       }
       isWaitingForCardRemoval = false
+      cardRemovalThread = null
+      latch.countDown()
+    }
+  }
+
+  // Must be called with nfcLock held.
+  private fun isCardPresent(): Boolean {
+    return try {
+      when (currentProtocol) {
+        BluebirdContactlessProtocols.MIFARE_ULTRALIGHT,
+        BluebirdContactlessProtocols.MIFARE_CLASSIC -> {
+          val response = nfcReader.BBextNfcMifareRead(0.toByte())
+          response != null && response.isNotEmpty() && response[0] == 0.toByte()
+        }
+        BluebirdContactlessProtocols.ST25_SRT512 -> {
+          val response = nfcReader.BBextNfcSRT512GetUID()
+          response != null && response.isNotEmpty() && response[0] == 0.toByte()
+        }
+        else -> {
+          val res = nfcReader.transmit(byteArrayOf(0x00.toByte()))
+          res != null && res.mResult == ResultCode.SUCCESS
+        }
+      }
+    } catch (e: Exception) {
+      if (logger.isDebugEnabled) {
+        logger.debug("Presence check failed: {}", e.message)
+      }
+      false
     }
   }
 
   override fun stopWaitForCardRemoval() {
     isWaitingForCardRemoval = false
+    val latch = cardRemovalLoopExitLatch ?: return
+    if (Thread.currentThread() === cardRemovalThread) return
+    // Block until the monitoring loop has really exited so that no native call is still in
+    // flight when the caller goes on with stopScan()/BBextNfcCarrierOff().
+    try {
+      if (!latch.await(STOP_WAIT_FOR_CARD_REMOVAL_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+        logger.warn(
+            "Card removal monitoring loop did not stop within {} ms",
+            STOP_WAIT_FOR_CARD_REMOVAL_TIMEOUT_MS,
+        )
+      }
+    } catch (_: InterruptedException) {
+      Thread.currentThread().interrupt()
+    }
   }
 
   private fun getNfcErrorMessage(status: Int): String {
@@ -467,7 +524,7 @@ internal class BluebirdCardReaderAdapter(
   }
 
   override fun transmitIsoApdu(apdu: ByteArray): ByteArray {
-    val transmitResult = nfcReader.transmit(apdu)
+    val transmitResult = synchronized(nfcLock) { nfcReader.transmit(apdu) }
     if (transmitResult.mData != null && transmitResult.mData.size > 256) {
       throw CardIOException(
           "Transmit APDU error: unexpected response length: ${transmitResult.mData.size}"
@@ -486,7 +543,7 @@ internal class BluebirdCardReaderAdapter(
       BluebirdContactlessProtocols.MIFARE_ULTRALIGHT,
       BluebirdContactlessProtocols.MIFARE_CLASSIC -> {
         val response =
-            nfcReader.BBextNfcMifareRead(blockNumber.toByte())
+            synchronized(nfcLock) { nfcReader.BBextNfcMifareRead(blockNumber.toByte()) }
                 ?: throw CardIOException("Read block error: BBextNfcMifareRead returned null")
         if (response.size == 17) {
           if (response[0] == 0.toByte()) {
@@ -502,7 +559,7 @@ internal class BluebirdCardReaderAdapter(
       }
       BluebirdContactlessProtocols.ST25_SRT512 -> {
         val response =
-            nfcReader.BBextNfcSRT512ReadBlock(blockNumber.toByte())
+            synchronized(nfcLock) { nfcReader.BBextNfcSRT512ReadBlock(blockNumber.toByte()) }
                 ?: throw CardIOException("Read block error: BBextNfcSRT512ReadBlock returned null")
         if (response.size == 5) {
           if (response[0] == 0.toByte()) {
@@ -526,13 +583,15 @@ internal class BluebirdCardReaderAdapter(
     when (currentProtocol) {
       BluebirdContactlessProtocols.MIFARE_ULTRALIGHT,
       BluebirdContactlessProtocols.MIFARE_CLASSIC -> {
-        val resultCode = nfcReader.BBextNfcMifareWrite(blockNumber.toByte(), data)
+        val resultCode =
+            synchronized(nfcLock) { nfcReader.BBextNfcMifareWrite(blockNumber.toByte(), data) }
         if (resultCode != 0) {
           throw CardIOException("Write block error: operation failed with result code $resultCode")
         }
       }
       BluebirdContactlessProtocols.ST25_SRT512 -> {
-        val resultCode = nfcReader.BBextNfcSRT512WriteBlock(blockNumber.toByte(), data)
+        val resultCode =
+            synchronized(nfcLock) { nfcReader.BBextNfcSRT512WriteBlock(blockNumber.toByte(), data) }
         if (resultCode != 0) {
           throw CardIOException("Write block error: operation failed with result code $resultCode")
         }
@@ -586,7 +645,9 @@ internal class BluebirdCardReaderAdapter(
 
     // Perform authentication using Bluebird NFC API
     val resultCode =
-        nfcReader.BBextNfciMifareAuthentication(bluebirdKeyType, blockAddress.toByte(), usedKey)
+        synchronized(nfcLock) {
+          nfcReader.BBextNfciMifareAuthentication(bluebirdKeyType, blockAddress.toByte(), usedKey)
+        }
 
     // Return true if authentication succeeded, false otherwise
     return resultCode == ResultCode.SUCCESS
