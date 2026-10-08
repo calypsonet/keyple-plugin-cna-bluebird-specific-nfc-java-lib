@@ -14,9 +14,6 @@ package org.calypsonet.keyple.plugin.bluebird
 /**
  * Definition of all supported contactless protocols.
  *
- * Note: since they are not APDU based, support for SRT512 and MIFARE protocols would require an
- * upgrade.
- *
  * @since 3.0.0
  */
 enum class BluebirdContactlessProtocols(private val techValue: Int) {

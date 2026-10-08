@@ -15,19 +15,28 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.Message
 import com.bluebird.payment.sam.SamInterface
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.eclipse.keyple.core.plugin.CardIOException
 import org.eclipse.keyple.core.plugin.spi.reader.ReaderSpi
 import org.eclipse.keyple.core.util.HexUtil
+import org.slf4j.LoggerFactory
 
 internal class BluebirdSamReaderAdapter : BluebirdSamReader, ReaderSpi {
 
-  private val samInterface = SamInterface(SamMessageHandler)
+  private companion object {
+    private val logger = LoggerFactory.getLogger(BluebirdSamReaderAdapter::class.java)
+    private const val SAM_RESPONSE_TIMEOUT_MS = 10_000L
+  }
+
+  private val samMessageHandler = SamMessageHandler()
+  private val samInterface = SamInterface(samMessageHandler)
   private var atr: ByteArray? = null
 
   override fun transmitApdu(apduIn: ByteArray): ByteArray {
-    checkStatus(samInterface.device_SendCommand(apduIn))
-    return runBlocking { SamMessageHandler.getSamMessage() }
+    return exchange { samInterface.device_SendCommand(apduIn) }
   }
 
   override fun getPowerOnData(): String {
@@ -39,8 +48,7 @@ internal class BluebirdSamReaderAdapter : BluebirdSamReader, ReaderSpi {
   }
 
   override fun openPhysicalChannel() {
-    checkStatus(samInterface.device_Open())
-    runBlocking { atr = SamMessageHandler.getSamMessage() }
+    atr = exchange { samInterface.device_Open() }
   }
 
   override fun isPhysicalChannelOpen(): Boolean {
@@ -60,28 +68,60 @@ internal class BluebirdSamReaderAdapter : BluebirdSamReader, ReaderSpi {
 
   override fun onUnregister() {
     samInterface.device_Close()
+    samMessageHandler.quit()
   }
 
-  private object SamMessageHandler :
+  // Arms the response handler before issuing the command so that no response can be missed.
+  private fun exchange(command: () -> Int): ByteArray {
+    val response = samMessageHandler.expectResponse()
+    try {
+      checkStatus(command())
+    } catch (e: Exception) {
+      samMessageHandler.cancelResponse(response)
+      throw e
+    }
+    return runBlocking {
+      try {
+        withTimeout(SAM_RESPONSE_TIMEOUT_MS) { response.await() }
+      } catch (_: TimeoutCancellationException) {
+        samMessageHandler.cancelResponse(response)
+        throw CardIOException("No response from the SAM within $SAM_RESPONSE_TIMEOUT_MS ms")
+      }
+    }
+  }
+
+  private class SamMessageHandler :
       Handler(HandlerThread("SamMessageHandlerThread").apply { start() }.looper) {
 
-    private var deferredSamResponse = CompletableDeferred<ByteArray>()
+    @Volatile private var pendingResponse: CompletableDeferred<ByteArray>? = null
 
-    override fun handleMessage(msg: Message) {
-      if (msg.what == SamInterface.SAM_DATA_RECEIVED_MSG_INT) {
-        deferredSamResponse.complete(msg.data.getByteArray("receive") ?: byteArrayOf())
-      } else {
-        deferredSamResponse.completeExceptionally(
-            CardIOException("Unexpected SAM message code received: {${msg.what}")
-        )
+    fun expectResponse(): CompletableDeferred<ByteArray> {
+      return CompletableDeferred<ByteArray>().also { pendingResponse = it }
+    }
+
+    fun cancelResponse(response: CompletableDeferred<ByteArray>) {
+      if (pendingResponse === response) {
+        pendingResponse = null
       }
     }
 
-    suspend fun getSamMessage(): ByteArray {
-      try {
-        return deferredSamResponse.await()
-      } finally {
-        deferredSamResponse = CompletableDeferred()
+    fun quit() {
+      looper.quitSafely()
+    }
+
+    override fun handleMessage(msg: Message) {
+      val response = pendingResponse
+      if (response == null) {
+        logger.warn("Unexpected SAM message received while no command is pending: {}", msg.what)
+        return
+      }
+      pendingResponse = null
+      if (msg.what == SamInterface.SAM_DATA_RECEIVED_MSG_INT) {
+        response.complete(msg.data.getByteArray("receive") ?: byteArrayOf())
+      } else {
+        response.completeExceptionally(
+            CardIOException("Unexpected SAM message code received: {${msg.what}")
+        )
       }
     }
   }

@@ -143,6 +143,8 @@ internal class BluebirdCardReaderAdapter(
   override fun getName(): String = BluebirdConstants.CARD_READER_NAME
 
   override fun openPhysicalChannel() {
+    val protocol =
+        currentProtocol ?: throw CardIOException("Open physical channel error: no card detected")
     synchronized(nfcLock) {
       val status = nfcReader.connect()
       if (status < 0) {
@@ -151,10 +153,10 @@ internal class BluebirdCardReaderAdapter(
         )
       }
 
-      if (currentProtocol == BluebirdContactlessProtocols.ST25_SRT512) {
+      if (protocol == BluebirdContactlessProtocols.ST25_SRT512) {
         // specific case for STM SRT512/ST25
         val response = nfcReader.BBextNfcSRT512GetUID()
-        if (response[0] == 0.toByte()) {
+        if (response != null && response.size >= 9 && response[0] == 0.toByte()) {
           uid = response.copyOfRange(1, 9)
         }
       }
@@ -162,7 +164,7 @@ internal class BluebirdCardReaderAdapter(
 
     currentPowerOnData =
         JSONObject()
-            .put("type", getTypeFromProtocol(currentProtocol!!))
+            .put("type", getTypeFromProtocol(protocol))
             .put("uid", HexUtil.toHex(uid))
             .toString()
     if (logger.isDebugEnabled) {
@@ -263,20 +265,23 @@ internal class BluebirdCardReaderAdapter(
         check(vasupMode != ExtNfcReader.ECP.Mode.VASUP_B) { "SKY ECP VASUP type B is set" }
         check(vasupPayload != null) { "SKY ECP VASUP payload was not set" }
         vasupMode = ExtNfcReader.ECP.Mode.VASUP_A
-        nfcEcp!!.setConfiguration(ExtNfcReader.ECP.Mode.VASUP_A, vasupPayload)
+        requireEcp().setConfiguration(ExtNfcReader.ECP.Mode.VASUP_A, vasupPayload)
         pollingProtocols = pollingProtocols or BluebirdContactlessProtocols.ISO_14443_4_A.getValue()
       }
       BluebirdContactlessProtocols.ISO_14443_4_B_SKY_ECP.name -> {
         check(vasupMode != ExtNfcReader.ECP.Mode.VASUP_A) { "SKY ECP VASUP type A is set" }
         check(vasupPayload != null) { "SKY ECP VASUP payload was not set" }
         vasupMode = ExtNfcReader.ECP.Mode.VASUP_B
-        nfcEcp!!.setConfiguration(ExtNfcReader.ECP.Mode.VASUP_B, vasupPayload)
+        requireEcp().setConfiguration(ExtNfcReader.ECP.Mode.VASUP_B, vasupPayload)
         pollingProtocols = pollingProtocols or BluebirdContactlessProtocols.ISO_14443_4_B.getValue()
       }
       else ->
           throw IllegalArgumentException("Activate protocol error: '$readerProtocol' not allowed")
     }
   }
+
+  private fun requireEcp(): ExtNfcReader.ECP =
+      nfcEcp ?: throw UnsupportedOperationException("SKY ECP is not supported by this reader")
 
   override fun deactivateProtocol(readerProtocol: String) {
     when (readerProtocol) {
@@ -300,7 +305,7 @@ internal class BluebirdCardReaderAdapter(
               pollingProtocols and BluebirdContactlessProtocols.MIFARE_CLASSIC.getValue().inv()
       BluebirdContactlessProtocols.ISO_14443_4_A_SKY_ECP.name,
       BluebirdContactlessProtocols.ISO_14443_4_B_SKY_ECP.name -> {
-        nfcEcp!!.clearConfiguration()
+        requireEcp().clearConfiguration()
         vasupMode = null
       }
       else ->
@@ -396,18 +401,24 @@ internal class BluebirdCardReaderAdapter(
   }
 
   override fun onReceive(context: Context, intent: Intent) {
-    if (ExtNfcReader.Broadcast.EXTNFC_DETECTED_ACTION == intent.action) {
-      currentProtocol =
-          BluebirdContactlessProtocols.fromValue(
-              intent.getIntExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_TYPE_KEY, -1)
-          )
-      if (logger.isDebugEnabled) {
-        logger.debug("Discovered tag with protocol: {}", currentProtocol)
-      }
-      // the following UID may be overwritten later according to the card tech
-      uid = intent.getByteArrayExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_DATA_KEY) as ByteArray
-      waitForCardInsertionAutonomousApi.onCardInserted()
+    if (ExtNfcReader.Broadcast.EXTNFC_DETECTED_ACTION != intent.action) return
+    val cardType = intent.getIntExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_TYPE_KEY, -1)
+    val protocol = BluebirdContactlessProtocols.fromValue(cardType)
+    val cardData = intent.getByteArrayExtra(ExtNfcReader.Broadcast.EXTNFC_CARD_DATA_KEY)
+    if (protocol == null || cardData == null) {
+      logger.warn(
+          "Ignoring card detection broadcast with unsupported card type {} or missing data",
+          cardType,
+      )
+      return
     }
+    currentProtocol = protocol
+    if (logger.isDebugEnabled) {
+      logger.debug("Discovered tag with protocol: {}", currentProtocol)
+    }
+    // the following UID may be overwritten later according to the card tech
+    uid = cardData
+    waitForCardInsertionAutonomousApi.onCardInserted()
   }
 
   override fun waitForCardRemoval() {

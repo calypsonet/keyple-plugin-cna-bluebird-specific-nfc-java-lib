@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `keyProvider` optional parameter to `BluebirdPluginFactoryProvider.provideFactory()` method
 ### Upgraded
 - Updated `keyple-plugin-storagecard-java-api`: `1.0.0` -> `1.1.0`
+- Updated `keyple-util-java-lib`: `2.4.1` -> `2.5.0`
+- Updated `kotlinx-coroutines-core`: `1.10.2` -> `1.11.0`
+- Example app: updated `keyple-java-bom` to `2026.09.29`, `keyple-card-cna-storagecard-java-lib`
+  to `2.3.1` and `keyple-plugin-cna-storagecard-java-lib` to `1.1.1`
 ### Changed
 - Renamed directories `bluebird-plugin` and `bluebird-plugin-mock` to `plugin` and `plugin-mock`
 - Renamed example app package from `org.calypsonet.keyple.plugin.bluebird.example`
@@ -23,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   through a single lock and `stopWaitForCardRemoval()` blocks until the card removal monitoring
   loop has actually exited.
 - Protected `unregisterReceiver` and the reader shutdown sequence against exceptions.
+- Card reader: ignore detection broadcasts with an unsupported card type or missing card data
+  instead of crashing, and fail with a `CardIOException` when opening a channel without a detected
+  card.
+- Card reader: raise an explicit `UnsupportedOperationException` when SKY ECP is requested on a
+  reader without ECP support.
+- SAM reader: the response handler is now bound to the reader instance, armed before each command
+  (no response can be missed) and guarded by a 10 s timeout instead of waiting indefinitely.
 
 ## [3.1.3] - 2026-07-03
 ### Fixed
