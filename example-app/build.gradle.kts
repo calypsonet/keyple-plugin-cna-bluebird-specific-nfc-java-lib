@@ -2,6 +2,8 @@
 //  GRADLE CONFIGURATION
 ///////////////////////////////////////////////////////////////////////////////
 
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
   id("com.android.application")
   id("kotlin-android")
@@ -128,7 +130,7 @@ android {
     sourceCompatibility = JavaVersion.toVersion(javaSourceLevel)
     targetCompatibility = JavaVersion.toVersion(javaTargetLevel)
   }
-  kotlin { jvmToolchain(javaTargetLevel.substringAfterLast('.').toInt()) }
+  kotlin { compilerOptions { jvmTarget.set(JvmTarget.fromTarget(javaTargetLevel)) } }
   sourceSets {
     getByName("main").java.srcDirs("src/main/kotlin")
     getByName("debug").java.srcDirs("src/debug/kotlin")
