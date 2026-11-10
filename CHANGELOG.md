@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Android Gradle plugin: `8.13.2` -> `9.4.1`
 - Updated Gradle: `9.3.0` -> `9.8.1`
 - Updated Dokka: `2.1.0` -> `2.2.0`
+- Example app: updated `keyple-java-bom`: `2026.10.14` -> `2026.11.10`
 
 ## [3.2.0] - 2026-10-29
 ### Added
