@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Removed
+- Unused `viewBinding` build feature and `kotlin-parcelize` plugin of the plugin libraries: the
+  `androidx.databinding:viewbinding` dependency is no longer propagated to the applications.
+### Upgraded
+- Updated `kotlin-stdlib` and Kotlin Gradle plugin: `2.3.0` -> `2.3.21`
+- Updated Android Gradle plugin: `8.13.2` -> `9.4.1`
+- Updated Gradle: `9.3.0` -> `9.8.1`
+- Updated Dokka: `2.1.0` -> `2.2.0`
+
 ## [3.2.0] - 2026-10-29
 ### Added
 - Added `MIFARE_CLASSIC` protocol support for NXP Mifare Classic cards

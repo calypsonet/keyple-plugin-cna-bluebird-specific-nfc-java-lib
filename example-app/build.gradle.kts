@@ -6,8 +6,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
   id("com.android.application")
-  id("kotlin-android")
-  id("kotlin-parcelize")
   id("com.diffplug.spotless")
   id("org.jetbrains.dokka")
   signing
@@ -131,23 +129,10 @@ android {
     targetCompatibility = JavaVersion.toVersion(javaTargetLevel)
   }
   kotlin { compilerOptions { jvmTarget.set(JvmTarget.fromTarget(javaTargetLevel)) } }
-  sourceSets {
-    getByName("main").java.srcDirs("src/main/kotlin")
-    getByName("debug").java.srcDirs("src/debug/kotlin")
-  }
-  packagingOptions {
+  packaging {
     // Exclude 'META-INF/NOTICE.md' to resolve the conflict that occurs when multiple dependencies
     // include this file
     resources.excludes.add("META-INF/NOTICE.md")
-  }
-  applicationVariants.all {
-    outputs.all {
-      val outputImpl = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
-      val variantName = name
-      val versionName = project.version.toString()
-      val newName = "${rootProject.name}-$versionName-$variantName.apk"
-      outputImpl.outputFileName = newName
-    }
   }
   publishing {
     singleVariant("release") {
@@ -157,14 +142,14 @@ android {
   lint { abortOnError = false }
 }
 
+base { archivesName.set("${rootProject.name}-${project.version}") }
+
 dokka {
   pluginsConfiguration.html {
     footerMessage.set(project.findProperty("javadoc.copyright") as String)
   }
-  dokkaSourceSets.named("main") {
-    includes.from(files(generatedOverviewFile))
-    moduleName.set(title)
-  }
+  moduleName.set(title)
+  dokkaSourceSets.configureEach { includes.from(files(generatedOverviewFile)) }
 }
 
 fun copyLicenseFiles() {
@@ -232,7 +217,7 @@ tasks {
   }
   register<Jar>("sourcesJar") {
     archiveClassifier.set("sources")
-    from(android.sourceSets.getByName("main").java.srcDirs)
+    from("src/main/kotlin")
     from(layout.buildDirectory.dir("resources/main"))
     doFirst { copyLicenseFiles() }
     manifest {

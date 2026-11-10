@@ -12,6 +12,7 @@ plugin/libs/
 gen/
 out/
 release/
+.kotlin/
 local.properties
 
 # Gradle
